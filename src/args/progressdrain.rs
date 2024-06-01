@@ -4,7 +4,7 @@
 //! Most likely slower than a slog_term drain
 //! ```
 //! use indicatif::{MultiProgress, ProgressBar};
-//! use slog::{o, Logger, info, Level};
+//! use slog::{o, info, Level};
 //! use std::sync::Arc;
 //!
 //! let prog = Arc::new(MultiProgress::new());
@@ -87,5 +87,48 @@ impl Drain for ProgressDrain {
 
         self.progress.println(s).unwrap();
         return Ok(());
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Test logging cabailities of ProgressDrain
+    #[test]
+    fn test_log() {
+        use indicatif::MultiProgress;
+        use slog::{o, Level};
+        use std::sync::Arc;
+        let prog = Arc::new(MultiProgress::new());
+        let drain = ProgressDrain::new(prog.clone(), Level::Trace);
+        let drain = slog_async::Async::new(drain).build().fuse();
+        let log = slog::Logger::root(drain, o!());
+        slog::crit!(log, "Critical test");
+        slog::error!(log, "Error test");
+        slog::warn!(log, "Warning test");
+        slog::info!(log, "Info test");
+        slog::debug!(log, "Debug test");
+        slog::trace!(log, "Trace test");
+    }
+
+    /// Ensure progress bar works properly
+    #[test]
+    fn test_progress() {
+        use indicatif::{MultiProgress, ProgressBar};
+        use slog::{o, Level};
+        use std::sync::Arc;
+        let prog = Arc::new(MultiProgress::new());
+        let drain = ProgressDrain::new(prog.clone(), Level::Trace);
+        let drain = slog_async::Async::new(drain).build().fuse();
+        let log = slog::Logger::root(drain, o!());
+
+        slog::info!(log, "log loop test");
+        let pg = prog.add(ProgressBar::new(100));
+        for i in 0..100 {
+            std::thread::sleep(std::time::Duration::from_micros(1000));
+            slog::info!(log, "iteration {}", i);
+            pg.inc(1);
+        }
     }
 }

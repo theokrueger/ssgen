@@ -15,32 +15,36 @@
 use clap::Parser;
 use indicatif::{MultiProgress, ProgressBar};
 use slog::{o, Drain, Level, Logger};
-use std::{path::Path, sync::Arc};
+use std::{
+    fs,
+    path::{Path, PathBuf},
+    sync::Arc,
+};
 
 /* LOCAL IMPORTS */
 mod progressdrain;
 use progressdrain::ProgressDrain;
 
 /* MACROS */
-/// Wrapper for slog error! macro to fix indicatif progress bar duplication
+/// Wrapper for slog error!() macro to fix indicatif progress bar duplication
 #[macro_export]
 macro_rules! error {
     ($target:expr, $($arg:tt)+) => (slog::error!($target.logger, $($arg)+));
 }
 
-/// Wrapper for slog warn! macro to fix indicatif progress bar duplication
+/// Wrapper for slog warn!() macro to fix indicatif progress bar duplication
 #[macro_export]
 macro_rules! warn {
     ($target:expr, $($arg:tt)+) => (slog::warn!($target.logger, $($arg)+));
 }
 
-/// Wrapper for slog info! macro to fix indicatif progress bar duplication
+/// Wrapper for slog info!() macro to fix indicatif progress bar duplication
 #[macro_export]
 macro_rules! info {
     ($target:expr, $($arg:tt)+) => (slog::info!($target.logger, $($arg)+));
 }
 
-/// Wrapper for slog debug! macro to fix indicatif progress bar duplication
+/// Wrapper for slog debug!() macro to fix indicatif progress bar duplication
 #[macro_export]
 macro_rules! debug {
     ($target:expr, $($arg:tt)+) => (slog::debug!($target.logger, $($arg)+));
@@ -55,10 +59,10 @@ macro_rules! debug {
 /// ```
 pub struct Options {
     /// Output directory for generated HTML
-    pub output: Box<Path>,
+    pub output: PathBuf,
 
     /// Input directory for page files
-    pub input: Box<Path>,
+    pub input: PathBuf,
 
     /// Global logger
     pub logger: Box<Logger>,
@@ -129,13 +133,28 @@ impl Args {
 
         slog::debug!(log, "Logger built!");
 
+        let mut exit = false;
+
         // canonicalise paths TODO
         slog::debug!(log, "Canonicalising paths...");
-        let input = self.input;
-        let output = self.output;
+        let input = match fs::canonicalize(&self.input) {
+            Ok(p) => p,
+            Err(e) => {
+                slog::error!(log, "Error canonicalizing output path {}", e);
+                exit = true;
+                self.input.to_path_buf()
+            }
+        };
+        let output = match fs::canonicalize(&self.output) {
+            Ok(p) => p,
+            Err(e) => {
+                slog::error!(log, "Error canonicalizing input path {}", e);
+                exit = true;
+                self.output.to_path_buf()
+            }
+        };
 
         // sanity check
-        let mut exit = false;
         if output == input {
             slog::error!(log, "Output directory is the same as Input directory!");
             exit = true;
@@ -147,7 +166,10 @@ impl Args {
                 "Sanity check failed! Please fix the above issues to proceed."
             );
             drop(log);
+            #[cfg(not(test))]
             std::process::exit(0x1);
+            #[cfg(test)]
+            panic!("Sanity check fail panic");
         }
 
         // done
@@ -157,5 +179,37 @@ impl Args {
             logger: Box::new(log),
             progress: prog,
         };
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Test wrapper macros debug!() info!() warn!() and error!()
+    #[test]
+    fn test_macros() {
+        let o: Options = Args::parse_from(["", "--input", "./", "--output", "/tmp/", "--silent"])
+            .build_options();
+        debug!(o, "Test debug");
+        info!(o, "Test info");
+        warn!(o, "Test warn");
+        error!(o, "Test error");
+    }
+
+    /// Ensure built options struct makes sense
+    #[test]
+    #[should_panic(expected = "Sanity check fail panic")]
+    fn test_arguments() {
+        // different loglevels
+        let _: Options = Args::parse_from(["", "-i", "./", "-o", "/tmp", "-s"]).build_options();
+        let _: Options = Args::parse_from(["", "-i", "./", "-o", "/tmp", "-q"]).build_options();
+        let _: Options = Args::parse_from(["", "-i", "./", "-o", "/tmp", "-v"]).build_options();
+        let _: Options = Args::parse_from(["", "-i", "./", "-o", "/tmp", "-d"]).build_options();
+        let _: Options = Args::parse_from(["", "-i", "./", "-o", "/tmp"]).build_options();
+
+        // fail sanity check
+        let _: Options =
+            Args::parse_from(["", "-i", "/ROOT/NONEXIST", "-o", "/ROOT/NONEXIST"]).build_options();
     }
 }
