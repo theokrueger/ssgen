@@ -1,0 +1,41 @@
+# Basic SSGen website example
+# by theokrueger
+
+# Define your global variables up here
+- !DEF [SITE_TITLE, Basic ssgen tutorial]
+- !DEF [SITE_BASEURL, localhost]
+- !DEF [AUTHOR, theokrueger]
+
+# Include a document break after your header
+---
+
+# Write your webpage here
+html:
+  # Metadata
+  head:
+    # See full example for a better way of doing this
+    - meta:
+        _charset: UTF-8
+    - meta:
+        _name: description
+        _content: an example website for SSGen
+    - meta:
+        _name: keywords
+        _content: "Rust,HTML,YAML"
+    - meta:
+        _name: author
+        _content: "${AUTHOR}"
+    - meta:
+        _name: viewport
+        _content: "width=device-width, initial-scale=1.0"
+
+  # Viewable page content
+  body:
+    h1: ${SITE_TITLE}
+    h2: By ${AUTHOR}
+    p: |
+      Multiline Paragraph example, great for paragraphs. Not so great for custom styling.
+
+      Go to <a href="https://${SITE_BASEURL}">this link</a> to view this webpage again.
+
+      See a better implementation of this in the advanced example.

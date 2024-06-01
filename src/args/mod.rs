@@ -201,14 +201,14 @@ mod tests {
     #[test]
     #[should_panic(expected = "Sanity check fail panic")]
     fn test_arguments() {
-        // different loglevels
+        // different loglevel arguments
         let _: Options = Args::parse_from(["", "-i", "./", "-o", "/tmp", "-s"]).build_options();
         let _: Options = Args::parse_from(["", "-i", "./", "-o", "/tmp", "-q"]).build_options();
         let _: Options = Args::parse_from(["", "-i", "./", "-o", "/tmp", "-v"]).build_options();
         let _: Options = Args::parse_from(["", "-i", "./", "-o", "/tmp", "-d"]).build_options();
         let _: Options = Args::parse_from(["", "-i", "./", "-o", "/tmp"]).build_options();
 
-        // fail sanity check
+        // should fail sanity check
         let _: Options =
             Args::parse_from(["", "-i", "/ROOT/NONEXIST", "-o", "/ROOT/NONEXIST"]).build_options();
     }
