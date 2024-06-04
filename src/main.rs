@@ -6,7 +6,7 @@
 //! - Intelligent design becomes intuitive
 
 /* IMPORTS */
-use clap::Parser;
+use clap::Parser as ClapParser;
 use glob::{glob_with, MatchOptions};
 use indicatif::ProgressBar;
 use std::{path::PathBuf, sync::Arc, thread, thread::JoinHandle, time::Instant};
@@ -14,6 +14,10 @@ use std::{path::PathBuf, sync::Arc, thread, thread::JoinHandle, time::Instant};
 /* LOCAL IMPORTS */
 mod args;
 use args::{Args, Options};
+mod pagenode;
+use pagenode::PageNode;
+mod parser;
+use parser::Parser;
 
 /* MAIN */
 fn main() {
@@ -61,11 +65,7 @@ fn main() {
         let thread_o = o.clone();
         let thread_pagebar = pagebar.clone();
         handlers.push(thread::spawn(move || {
-            for i in 1..10 {
-                info!(thread_o, "hi {} from {}!", i, thread_pagefile.display());
-                thread::sleep(std::time::Duration::from_millis(100));
-            }
-            thread_pagebar.inc(1);
+            error!(thread_o, "test");
         }))
     });
 

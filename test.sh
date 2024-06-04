@@ -10,7 +10,7 @@ MERGED_PROFILE_FILE="ssgen.profdata"
 # ---- #
 
 if [[ "$1" == "help" ]] || [[ "$1" == "" ]]; then
-  echo "Usage: $0 <coverage|profile> [noopen]"
+  echo "Usage: $0 <coverage|profile> [open]"
   echo "Generate coverage report or profile the program"
   exit
 fi
@@ -101,8 +101,10 @@ fi # end coverage
 if [[ "$1" == "profile" ]]; then
   echo "Profiling full example..."
   FULL_EXAMPLE="$OUTPUT_DIR/example_full/"
+  EXECUTABLE="$PROJECT_ROOT/target/debug/ssgen"
   mkdir -p "$FULL_EXAMPLE" || fail "direcory error"
-  samply record "$PROJECT_ROOT/target/debug/ssgen" --loglevel Ridiculous --output "$FULL_EXAMPLE" "$PROJECT_ROOT/examples/full/" || fail "samply/ssgen error!"
+  touch "$FULL_EXAMPLE"/test.txt
+  samply record -- "$EXECUTABLE" --debug --output "$FULL_EXAMPLE/test.txt" --input "$PROJECT_ROOT/examples/full/" || fail "samply/ssgen error!"
 fi # end profile
 
 echo "Done!"

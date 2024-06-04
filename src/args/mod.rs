@@ -135,12 +135,16 @@ impl Args {
 
         let mut exit = false;
 
-        // canonicalise paths TODO
+        // canonicalise paths
         slog::debug!(log, "Canonicalising paths...");
         let input = match fs::canonicalize(&self.input) {
             Ok(p) => p,
             Err(e) => {
-                slog::error!(log, "Error canonicalizing output path {}", e);
+                slog::error!(
+                    log,
+                    "Error canonicalizing input path '{path}' '{e}'",
+                    path = &self.input.display(),
+                );
                 exit = true;
                 self.input.to_path_buf()
             }
@@ -148,7 +152,12 @@ impl Args {
         let output = match fs::canonicalize(&self.output) {
             Ok(p) => p,
             Err(e) => {
-                slog::error!(log, "Error canonicalizing input path {}", e);
+                slog::error!(
+                    log,
+                    "Error canonicalizing output path '{path}' '{e}'",
+                    path = &self.input.display(),
+                );
+
                 exit = true;
                 self.output.to_path_buf()
             }
