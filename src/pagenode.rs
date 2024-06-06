@@ -3,16 +3,22 @@
 //! PageNode can be combined into a tree that can represent a full HTML webpage
 //! ```
 //! let o = Arc::new(Args::parse().build_options());
+//!
 //! let mut parent = PageNode::new(o.clone());
-//! parent.set_name("HTMLNode");
-//! parent.add_metadata(("class".into(), "SomeClass".into());
+//! parent.set_name("HTMLNode".into());
+//! parent.add_metadata(("class".into(), "SomeClass".into()));
 //! let mut child = PageNode::new(o.clone());
-//! child.set_content("${MyContent}");
-//! assert_eq!(format!("{parent}"), "<HTMLNode class="SomeClass">Content</HTMLNode>");
+//! child.set_content("{MyContent}".into());
+//!
+//! assert_eq!(
+//!     format!("{parent}"),
+//!     r#"<HTMLNode class="SomeClass">Content</HTMLNode>"#
+//! );
 //! ```
 
 /* IMPORTS */
 use std::{
+    cell::RefCell,
     collections::{HashMap, LinkedList},
     fmt,
     sync::Arc,
@@ -23,8 +29,6 @@ use crate::{debug, error, info, warn, Options};
 
 /* PAGENODE */
 /// A PageNode is a node in a tree, where the tree can be resolved into a complete webpage
-///
-/// PageNode
 pub struct PageNode {
     /// Name of the node
     name: Box<str>,
@@ -33,19 +37,19 @@ pub struct PageNode {
     metadata: LinkedList<(Box<str>, Box<str>)>,
 
     /// Text content of node. This always be empty unless there is no name and no children.
-    content: Box<str>,
+    content: String,
 
     /// Children nodes of this page node
-    children: LinkedList<PageNode>,
+    children: LinkedList<Arc<RefCell<PageNode>>>,
 
     /// parent node of this page node
-    parent: Option<Arc<PageNode>>,
+    parent: Option<Arc<RefCell<PageNode>>>,
 
     /// Mapping containing variables inside the current scope
     vars: HashMap<Box<str>, Box<str>>,
 
     /// Program-wide options and logger, see args::Options for more.
-    o: Arc<Options>,
+    pub o: Arc<Options>,
 }
 
 impl PageNode {
@@ -75,19 +79,20 @@ impl PageNode {
     /// Search the current node first, then sequentially search parent nodes until variable is found.
     /// If variable does not exist in the node tree, return a placeholder
     pub fn get_var(&self, k: Box<str>) -> Box<str> {
+        // search self
         match self.vars.get(&k) {
             Some(v) => return v.clone(),
-            None => match self.parent.clone() {
-                Some(p) => return p.get_var(k),
-                None => return "UNDEFINED".to_string().into_boxed_str(),
-            },
+            None => (),
+        };
+        // search parent
+        match &self.parent {
+            Some(p) => return p.borrow().get_var(k),
+            None => return "UNDEFINED".to_string().into_boxed_str(),
         }
     }
 
-    /// Add a new child to the end of children, taking ownership of it
-    pub fn add_child(&mut self, mut child: PageNode) {
-        // content should never be set when there is a child
-        debug_assert!(self.content.len() == 0);
+    /// Add a new child to the end of children
+    pub fn add_child(&mut self, child: Arc<RefCell<PageNode>>) {
         self.children.push_back(child);
     }
 
@@ -97,21 +102,17 @@ impl PageNode {
     }
 
     /// Set content of node, taking ownership of passed text
-    pub fn set_content(&mut self, s: Box<str>) {
-        // content should only be set when there is no name and no children
-        debug_assert!(self.children.len() == 0 && self.name.len() == 0);
-        self.content = self.parse_string(s);
+    pub fn add_content(&mut self, s: Box<str>) {
+        self.content += &self.parse_string(s.into());
     }
 
     /// Set parent of node, taking ownership of passed Arc
-    pub fn set_parent(&mut self, p: Arc<PageNode>) {
-        self.parent = Some(p);
+    pub fn set_parent(&mut self, p: Arc<RefCell<PageNode>>) {
+        self.parent = Some(p.clone());
     }
 
     /// Set name of node, taking ownership of passed text
     pub fn set_name(&mut self, s: Box<str>) {
-        // content should never be set when there is a name
-        debug_assert!(self.content.len() == 0);
         self.name = self.parse_string(s);
     }
 
@@ -123,7 +124,7 @@ impl PageNode {
     ///   - This means that regiestering a variable k='{var}' v='value' is 'somename: value' where 'var' is defined as 'somename'
     ///   - Setting content to '{{x}}' is also allowed and will evaluate (where 'x' = 'var', 'var' = '2') to '${var}' then to 'two'
     ///   - Variables can be escaped with '\\{' (literal backslash)
-    fn parse_string(&self, s: Box<str>) -> Box<str> {
+    pub fn parse_string(&self, s: Box<str>) -> Box<str> {
         const BUFSIZE: usize = 250; // should be divisible by 10
         let mut builder = String::with_capacity(BUFSIZE);
 
@@ -167,7 +168,6 @@ impl PageNode {
                                 // end of variable or sub-variable
                                 '}' => {
                                     if brace_depth == 0 {
-                                        prev = c;
                                         break;
                                     }
                                     brace_depth -= 1;
@@ -176,7 +176,6 @@ impl PageNode {
                                 // other
                                 _ => var_builder.push(c),
                             }
-                            prev = c;
                         }
                         // variable built, get var now
                         var_builder = self.parse_string(var_builder.into()).into();
@@ -205,21 +204,19 @@ impl fmt::Display for PageNode {
     /// Resolve a PageNode and all its children into text
     ///
     /// Has the following cases for formatting:
-    /// - No content and no children: "{content}" (ignores metadata)
-    /// - No content and children: "{children}" (ignores metadata)
-    /// - Content and no children: "<{name} {metadata}/>"
-    /// - Content and children: "<{name} {metadata}>{content}{children}</{name}>
+    /// - No name and no children: `"{content}"` (ignores metadata)
+    /// - No name and children: `"{content{{children}"` (ignores metadata)
+    /// - Name and no children: `"{content}<{name} {metadata}/>"`
+    /// - Name and children: `"<{name} {metadata}>{content}{children}</{name}>"`
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-        let case = (self.children.len() != 0) as u8 + (self.name.len() != 0) as u8 * 2;
+        let case = (self.children.len() != 0 || self.content.len() != 0) as u8
+            + (self.name.len() != 0) as u8 * 2;
         match case {
-            // no name, no children
-            0 => {
+            // no name, children(?)
+            0 | 1 => {
                 write!(f, "{}", self.content)?;
-            }
-            // no name, children
-            1 => {
                 for x in self.children.iter() {
-                    write!(f, "{}", x)?;
+                    write!(f, "{}", x.borrow())?;
                 }
             }
             // name, no children
@@ -235,7 +232,7 @@ impl fmt::Display for PageNode {
                         .collect::<String>()
                 )?;
             }
-            //name, children
+            //name, children or content
             _ => {
                 write!(
                     f,
@@ -247,8 +244,9 @@ impl fmt::Display for PageNode {
                         .map(|(k, v)| format!(r#" {k}="{v}""#))
                         .collect::<String>()
                 )?;
+                write!(f, "{}", self.content)?;
                 for x in self.children.iter() {
-                    write!(f, "{}", x)?;
+                    write!(f, "{}", x.borrow())?;
                 }
                 write!(f, "</{name}>", name = self.name)?;
             }
@@ -257,6 +255,7 @@ impl fmt::Display for PageNode {
         return Ok(());
     }
 }
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -278,11 +277,11 @@ mod tests {
         let o = Arc::new(Args::parse_from(["", "-i", "./", "-o", "/tmp/", "-d"]).build_options());
 
         let mut noname_nochild = PageNode::new(o.clone());
-        noname_nochild.set_content("some content".into());
+        noname_nochild.add_content("some content".into());
         assert_eq!(format!("{}", noname_nochild), "some content");
 
         let mut noname_child = PageNode::new(o.clone());
-        noname_child.add_child(noname_nochild);
+        noname_child.add_child(Arc::new(RefCell::new(noname_nochild)));
         assert_eq!(format!("{}", noname_child), "some content");
 
         let mut name_nochild = PageNode::new(o.clone());
@@ -310,30 +309,46 @@ mod tests {
 
         let mut node = PageNode::new(o.clone());
         node.register_var("x".into(), "69".into());
-        node.set_content("The value of x is {x}".into());
+        node.add_content("The value of x is {x}".into());
         assert_eq!(format!("{}", node), "The value of x is 69");
 
+        let mut node = PageNode::new(o.clone());
+        node.register_var("x".into(), "69".into());
         node.register_var("{x}".into(), "funny number".into());
-        node.set_content("The value of 69 is {69}".into());
+        node.add_content("The value of 69 is {69}".into());
         assert_eq!(format!("{}", node), "The value of 69 is funny number");
 
+        let mut node = PageNode::new(o.clone());
+        node.register_var("x".into(), "69".into());
+        node.register_var("{x}".into(), "funny number".into());
         node.register_var("{69}".into(), "funny number {x}".into());
-        node.set_content("The value of funny number is {funny number}".into());
+        node.add_content("The value of funny number is {funny number}".into());
         assert_eq!(
             format!("{}", node),
             "The value of funny number is funny number 69"
         );
 
-        // clean node
         let mut node = PageNode::new(o.clone());
         node.register_var("x".into(), "y".into());
         node.register_var("y".into(), "z".into());
-        node.set_content("{{x}}".into());
+        node.add_content("{{x}}".into());
         assert_eq!(format!("{}", node), "z");
 
-        node.set_content("\\{novar\\}".into());
+        let mut node = PageNode::new(o.clone());
+        node.add_content("\\{novar\\}".into());
         assert_eq!(format!("{}", node), "{novar}");
-        node.set_content("{undefined variable}".into());
+
+        let mut node = PageNode::new(o.clone());
+        node.add_content("{undefined variable}".into());
         assert_eq!(format!("{}", node), "UNDEFINED");
+
+        let mut node = Arc::new(RefCell::new(PageNode::new(o.clone())));
+        node.borrow_mut().register_var("x".into(), "y".into());
+        node.borrow_mut().set_name("name".into());
+        let mut child = Arc::new(RefCell::new(PageNode::new(o.clone())));
+        node.borrow_mut().add_child(child.clone());
+        child.borrow_mut().set_parent(node.clone());
+        child.borrow_mut().add_content("{x}".into());
+        assert_eq!(format!("{}", node.borrow()), "<name>y</name>");
     }
 }

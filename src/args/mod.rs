@@ -1,4 +1,4 @@
-//! Arguments module for ssgen
+//! Arguments parser and Options struct
 //!
 //! Parses command line arguments for ssgen into a struct for ease of access
 //!
@@ -13,7 +13,7 @@
 
 /* IMPORTS */
 use clap::Parser;
-use indicatif::{MultiProgress, ProgressBar};
+use indicatif::MultiProgress;
 use slog::{o, Drain, Level, Logger};
 use std::{
     fs,

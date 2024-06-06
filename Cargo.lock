@@ -337,6 +337,7 @@ dependencies = [
  "glob",
  "indicatif",
  "log",
+ "serde",
  "serde_yaml",
  "slog",
  "slog-async",

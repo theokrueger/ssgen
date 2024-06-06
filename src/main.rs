@@ -57,6 +57,7 @@ fn main() {
     // create one thread per page, let the scheduler handle the hard part lol
     debug!(o, "Creating Page threads!");
     let pagebar = Arc::new(o.progress.add(ProgressBar::new(pages.len() as u64 + 1)));
+    o.progress.set_move_cursor(true); // reduces flickering
     pagebar.tick();
 
     let mut handlers = Vec::<JoinHandle<()>>::new();
@@ -65,7 +66,9 @@ fn main() {
         let thread_o = o.clone();
         let thread_pagebar = pagebar.clone();
         handlers.push(thread::spawn(move || {
-            error!(thread_o, "test");
+            let mut parser = Parser::new(thread_o);
+            parser.add_progressbar(thread_pagebar);
+            parser.parse_yaml(r#"testing"#);
         }))
     });
 
