@@ -6,6 +6,9 @@ PROJECT_ROOT="$PWD"
 OUTPUT_DIR="$PROJECT_ROOT/target/coverage"
 PROFILE_FILE="ssgen.profraw"
 MERGED_PROFILE_FILE="ssgen.profdata"
+FULL_EXAMPLE_IN="$PROJECT_ROOT/examples/full/"
+FULL_EXAMPLE_O="$OUTPUT_DIR/example_full/"
+EXECUTABLE="$PROJECT_ROOT/target/debug/ssgen"
 
 # ---- #
 
@@ -100,11 +103,8 @@ fi # end coverage
 
 if [[ "$1" == "profile" ]]; then
   echo "Profiling full example..."
-  FULL_EXAMPLE="$OUTPUT_DIR/example_full/"
-  EXECUTABLE="$PROJECT_ROOT/target/debug/ssgen"
-  mkdir -p "$FULL_EXAMPLE" || fail "direcory error"
-  touch "$FULL_EXAMPLE"/test.txt
-  samply record -- "$EXECUTABLE" --debug --output "$FULL_EXAMPLE/test.txt" --input "$PROJECT_ROOT/examples/full/" || fail "samply/ssgen error!"
+  mkdir -p "$FULL_EXAMPLE_O" || fail "direcory error"
+  samply record -- "$EXECUTABLE" --debug --output "$FULL_EXAMPLE_O/" --input "$FULL_EXAMPLE_IN" || fail "samply/ssgen error!"
 fi # end profile
 
 echo "Done!"

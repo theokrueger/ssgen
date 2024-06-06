@@ -9,7 +9,8 @@
 use clap::Parser as ClapParser;
 use glob::{glob_with, MatchOptions};
 use indicatif::ProgressBar;
-use std::{path::PathBuf, sync::Arc, thread, thread::JoinHandle, time::Instant};
+use pathdiff::diff_paths;
+use std::{fs, path::PathBuf, sync::Arc, thread, thread::JoinHandle, time::Instant};
 
 /* LOCAL IMPORTS */
 mod args;
@@ -66,9 +67,40 @@ fn main() {
         let thread_o = o.clone();
         let thread_pagebar = pagebar.clone();
         handlers.push(thread::spawn(move || {
-            let mut parser = Parser::new(thread_o);
+            let mut parser = Parser::new(thread_o.clone());
             parser.add_progressbar(thread_pagebar);
-            parser.parse_yaml(r#"testing"#);
+            // read input
+            info!(thread_o, "Reading file {}", thread_pagefile.display());
+            match fs::read_to_string(thread_pagefile.clone()) {
+                Ok(yaml) => parser.parse_yaml(yaml.as_str()),
+                Err(e) => error!(
+                    thread_o,
+                    "Error reading file {f} | {e}",
+                    f = thread_pagefile.display()
+                ),
+            }
+            // write output
+            let mut out_f = thread_o.output.clone();
+            out_f.push(diff_paths(thread_pagefile, thread_o.input.clone()).unwrap());
+            out_f.set_extension("html");
+            let mut out_d = out_f.clone();
+            out_d.pop(); // out_d now just directory containing file
+            info!(thread_o, "Writing file {}", out_f.display());
+            match fs::create_dir_all(out_d) {
+                Ok(()) => match fs::write(out_f.clone(), format!("<!DOCTYPE html>\n{}", parser)) {
+                    Ok(()) => (),
+                    Err(e) => error!(
+                        thread_o,
+                        "Error writing file {f} | {e}",
+                        f = out_f.display()
+                    ),
+                },
+                Err(e) => error!(
+                    thread_o,
+                    "Error writing file {f} | {e}",
+                    f = out_f.display()
+                ),
+            }
         }))
     });
 
@@ -84,6 +116,8 @@ fn main() {
     }
 
     /* CLEANUP */
+    pagebar.inc(1);
+    pagebar.tick();
     info!(
         o,
         "Completed in {t} Seconds!",

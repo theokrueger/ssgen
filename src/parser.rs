@@ -42,7 +42,10 @@ impl Parser {
         }
         // increment progressbar after completion
         match &self.progressbar {
-            Some(pb) => pb.inc(1),
+            Some(pb) => {
+                pb.inc(1);
+                pb.tick();
+            }
             None => (),
         }
     }
