@@ -1,0 +1,37 @@
+# full SSGen website example
+# (c) theokrueger 2024
+html:
+  - !INCLUDE ./head.block
+  - body:
+    - div:
+        - span:
+            text: '{TITLE}'
+            _class: title-font
+        - br: ''
+        - span:
+            text: '{SUBTITLE}'
+            _class: subtitle-font
+        - br: ''
+        - p:
+            text: JavaScript not enabled!!
+            _id: jsreplace
+            _align: right
+    - div:
+        h1: Why?
+        p: |
+          SSGen is a powerful static site generator that provides a flexible toolset for any type of (static) webpage.
+        span:
+          _style: "display: grid; grid-template-columns: 50% 50%;"
+          pros:
+            p: Pros
+            ul:
+              - li: one
+              - li: two
+              - li: three
+          cons:
+            p: Cons
+            ul:
+              - li: one
+              - li: two
+              - li: three
+    - div: !INCLUDE "/features/variables.block"

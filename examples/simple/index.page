@@ -24,18 +24,18 @@ html:
         _content: "Rust,HTML,YAML"
     - meta:
         _name: author
-        _content: "${AUTHOR}"
+        _content: "{AUTHOR}"
     - meta:
         _name: viewport
         _content: "width=device-width, initial-scale=1.0"
 
   # Viewable page content
   body:
-    h1: ${SITE_TITLE}
-    h2: By ${AUTHOR}
+    h1: {SITE_TITLE}
+    h2: By {AUTHOR}
     p: |
       Multiline Paragraph example, great for paragraphs. Not so great for custom styling.
 
-      Go to <a href="https://${SITE_BASEURL}">this link</a> to view this webpage again.
+      Go to <a href="https://{SITE_BASEURL}">this link</a> to view this webpage again.
 
       See a better implementation of this in the advanced example.

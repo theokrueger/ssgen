@@ -1,0 +1,50 @@
+# head block containing metadata and js/css
+#
+# optional variables:
+# AUTHOR - Author of the website or page on website
+# KEYWORDS - Keywords for SEO
+# TITLE - Title of the page or site title
+# DESCRIPTION - Description of the site or page
+# STYLESHEET - a .css file to include in the page. absolute paths or links preferred.
+# JSFILE - a .js file to include in the page. absolute paths or links prefrered.
+# FAVICON - a .ico file to include as the page's favicon. absolute paths preferred
+
+head:
+  - !FOREACH [
+      [x],
+      '<meta {x}/>',
+      ['charset="UTF-8"'],
+      ['http-equiv="X-UA_Compatible" content="IE=edge"'],
+      ['name="viewport" content="width=device-width, initial-scale=1"'],
+      [!IF ['{AUTHOR}', 'name="author" content="{AUTHOR}"']],
+      [!IF ['{KEYWORDS}', 'name="keywords" content="{KEYWORDS}"']],
+      [!IF ['{DESCRIPTION}', 'name="description" content"{DESCRIPTION}"']],
+  ]
+  # site title
+  - !IF ['{TITLE}', title: '{TITLE}']
+  # .css file
+  - !IF ['{STYLESHEET}',
+    link: {
+      _rel: 'stylesheet',
+      _type: 'text/css',
+      _href: '{STYLESHEET}',
+    }
+  ]
+  # .js file
+  - !IF ['{JSFILE}',
+    script: [
+      _type: 'text/javascript',
+      _src: '{JSFILE}',
+      _defer: '',
+      # this is a hack due to the weirdness of defer tag
+      ' ',
+    ]
+  ]
+  # favicon
+  - !IF ['{FAVICON}',
+    link: {
+      _rel: 'icon',
+      _type: 'image/x-icon',
+      _href: '{FAVICON}',
+    }
+  ]
