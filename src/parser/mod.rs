@@ -12,6 +12,7 @@ use std::{cell::RefCell, fmt, sync::Arc};
 
 /* LOCAL IMPORTS */
 use crate::{debug, error, info, warn, Options, PageNode};
+mod directives;
 
 /* PARSER */
 pub struct Parser {
@@ -84,7 +85,7 @@ impl Parser {
             Value::Mapping(map) => {
                 Parser::parse_map(target, map);
             }
-            Value::Tagged(t) => (),
+            Value::Tagged(t) => Parser::parse_tagged(target, t),
         };
     }
 
@@ -93,7 +94,12 @@ impl Parser {
     /// This is achieved by just forwarding mappings to parse_map
     fn parse_seq(target: Arc<RefCell<PageNode>>, seq: &Sequence) {
         for i in seq.iter() {
+            let mut skip = false;
             match i {
+                Value::Tagged(t) => {
+                    Parser::parse_tagged(target.clone(), t);
+                    skip = true;
+                }
                 Value::Mapping(map) => {
                     map.iter().for_each(|(k, v)| {
                         // parse k as string only TODO this might cause issues
@@ -110,15 +116,18 @@ impl Parser {
                             target
                                 .borrow_mut()
                                 .add_metadata((kstr[1..].into(), vstr.into()));
+                            skip = true;
                         }
                     });
                 }
                 _ => (),
             };
-            let child = Arc::new(RefCell::new(PageNode::new(target.borrow().o.clone())));
-            child.borrow_mut().set_parent(target.clone());
-            target.borrow_mut().add_child(child.clone());
-            Parser::add_value(child.clone(), i);
+            if !skip {
+                let child = Arc::new(RefCell::new(PageNode::new(target.borrow().o.clone())));
+                child.borrow_mut().set_parent(target.clone());
+                target.borrow_mut().add_child(child.clone());
+                Parser::add_value(child.clone(), i);
+            }
         }
     }
 
@@ -147,6 +156,20 @@ impl Parser {
             }
         });
     }
+
+    /// Parse a TaggedValue and follow its directive
+    fn parse_tagged(target: Arc<RefCell<PageNode>>, tv: &TaggedValue) {
+        let tag: String = tv.tag.to_string();
+        match tag.as_str() {
+            "!DEF" => directives::def(target, tv),
+            // "!FOREACH" => return self.directive_foreach(tv),
+            // "!INCLUDE" => return self.directive_include(tv),
+            // "!IF" => return self.directive_if(tv),
+            // "!COPY" => self.directive_copy(tv),
+            // no matching directive
+            _ => warn!(target.borrow().o, "No matching directive for {tag}"),
+        }
+    }
 }
 
 impl fmt::Display for Parser {
@@ -165,7 +188,7 @@ mod tests {
     /// Ensure Parser can handle basic Value types
     #[test]
     fn test_simple() {
-        let o = Arc::new(Args::parse_from(["", "-i", "./", "-o", "/tmp/", "-d"]).build_options());
+        let o = Arc::new(Args::parse_from(["", "-i", "./", "-o", "/tmp/", "-s"]).build_options());
         let mut p = Parser::new(o.clone());
         p.parse_yaml(
             r#"
@@ -189,7 +212,7 @@ NULL
     /// Ensure Parser can handle `Value::Sequence`
     #[test]
     fn test_sequence() {
-        let o = Arc::new(Args::parse_from(["", "-i", "./", "-o", "/tmp/", "-d"]).build_options());
+        let o = Arc::new(Args::parse_from(["", "-i", "./", "-o", "/tmp/", "-s"]).build_options());
         let mut p = Parser::new(o.clone());
         p.parse_yaml(
             r#"
@@ -251,7 +274,7 @@ NULL
     #[test]
     #[should_panic]
     fn test_bad_yaml() {
-        let o = Arc::new(Args::parse_from(["", "-i", "./", "-o", "/tmp/", "-d"]).build_options());
+        let o = Arc::new(Args::parse_from(["", "-i", "./", "-o", "/tmp/", "-s"]).build_options());
         let mut p = Parser::new(o.clone());
         p.parse_yaml(
             r#"
@@ -264,7 +287,7 @@ error: a: b: c: d: e
     /// Ensure Parser can handle `Value::Mapping`
     #[test]
     fn test_map() {
-        let o = Arc::new(Args::parse_from(["", "-i", "./", "-o", "/tmp/", "-d"]).build_options());
+        let o = Arc::new(Args::parse_from(["", "-i", "./", "-o", "/tmp/", "-s"]).build_options());
 
         let mut p = Parser::new(o.clone());
         p.parse_yaml(

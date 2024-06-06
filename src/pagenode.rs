@@ -268,7 +268,7 @@ mod tests {
     /// empsure a pagenode can be created and its contents can be accessed as needed
     #[test]
     fn test_empty() {
-        let o = Arc::new(Args::parse_from(["", "-i", "./", "-o", "/tmp/", "-d"]).build_options());
+        let o = Arc::new(Args::parse_from(["", "-i", "./", "-o", "/tmp/", "-s"]).build_options());
         let p = PageNode::new(o.clone());
         info!(o, "test log");
         assert_eq!(format!("{}", p), "");
@@ -277,7 +277,7 @@ mod tests {
     /// Test the four different display formats for a PageNode
     #[test]
     fn test_pagenode_display() {
-        let o = Arc::new(Args::parse_from(["", "-i", "./", "-o", "/tmp/", "-d"]).build_options());
+        let o = Arc::new(Args::parse_from(["", "-i", "./", "-o", "/tmp/", "-s"]).build_options());
 
         let mut noname_nochild = PageNode::new(o.clone());
         noname_nochild.add_content("some content".into());
@@ -308,7 +308,7 @@ mod tests {
     /// Test string parsing
     #[test]
     fn test_parse_string() {
-        let o = Arc::new(Args::parse_from(["", "-i", "./", "-o", "/tmp/", "-d"]).build_options());
+        let o = Arc::new(Args::parse_from(["", "-i", "./", "-o", "/tmp/", "-s"]).build_options());
 
         let mut node = PageNode::new(o.clone());
         node.register_var("x".into(), "69".into());
