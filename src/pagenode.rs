@@ -87,7 +87,10 @@ impl PageNode {
         // search parent
         match &self.parent {
             Some(p) => return p.borrow().get_var(k),
-            None => return "UNDEFINED".to_string().into_boxed_str(),
+            None => {
+                warn!(self.o, "Undefined variable {k}");
+                return "UNDEFINED".to_string().into_boxed_str();
+            }
         }
     }
 
@@ -342,10 +345,10 @@ mod tests {
         node.add_content("{undefined variable}".into());
         assert_eq!(format!("{}", node), "UNDEFINED");
 
-        let mut node = Arc::new(RefCell::new(PageNode::new(o.clone())));
+        let node = Arc::new(RefCell::new(PageNode::new(o.clone())));
         node.borrow_mut().register_var("x".into(), "y".into());
         node.borrow_mut().set_name("name".into());
-        let mut child = Arc::new(RefCell::new(PageNode::new(o.clone())));
+        let child = Arc::new(RefCell::new(PageNode::new(o.clone())));
         node.borrow_mut().add_child(child.clone());
         child.borrow_mut().set_parent(node.clone());
         child.borrow_mut().add_content("{x}".into());

@@ -8,12 +8,7 @@
 use indicatif::ProgressBar;
 use serde::Deserialize;
 use serde_yaml::{value::TaggedValue, Deserializer, Mapping, Sequence, Value};
-use std::{
-    cell::RefCell,
-    collections::{HashMap, LinkedList},
-    fmt,
-    sync::Arc,
-};
+use std::{cell::RefCell, fmt, sync::Arc};
 
 /* LOCAL IMPORTS */
 use crate::{debug, error, info, warn, Options, PageNode};
@@ -108,7 +103,7 @@ impl Parser {
 
                         if kstr.len() > 0 && &kstr[..1] == "_" {
                             // leading underscore for key indicates metadata
-                            let mut child =
+                            let child =
                                 Arc::new(RefCell::new(PageNode::new(target.borrow().o.clone())));
                             Parser::add_value(child.clone(), v);
                             let vstr = format!("{}", child.borrow());
@@ -120,7 +115,7 @@ impl Parser {
                 }
                 _ => (),
             };
-            let mut child = Arc::new(RefCell::new(PageNode::new(target.borrow().o.clone())));
+            let child = Arc::new(RefCell::new(PageNode::new(target.borrow().o.clone())));
             child.borrow_mut().set_parent(target.clone());
             target.borrow_mut().add_child(child.clone());
             Parser::add_value(child.clone(), i);
@@ -130,7 +125,7 @@ impl Parser {
     /// Create a PageNode for Mapping element and add it to target
     fn parse_map(target: Arc<RefCell<PageNode>>, map: &Mapping) {
         map.iter().for_each(|(k, v)| {
-            let mut child = Arc::new(RefCell::new(PageNode::new(target.borrow().o.clone())));
+            let child = Arc::new(RefCell::new(PageNode::new(target.borrow().o.clone())));
             // parse k as string only TODO this might cause issues
             // can a key Value not be a string?
             debug_assert!(k.is_string()); // TODO
