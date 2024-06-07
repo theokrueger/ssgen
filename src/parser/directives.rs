@@ -9,14 +9,36 @@ use serde_yaml::{value::TaggedValue, Deserializer, Mapping, Sequence, Value};
 use std::{cell::RefCell, fmt, sync::Arc};
 
 /* LOCAL IMPORTS */
-use crate::{debug, error, info, warn, Options, PageNode};
+use crate::{debug, error, info, warn, Options, PageNode, Parser};
 
+/* DIRECTIVES */
+/// Macro to automate parsing a Value into a boxed str given a target and Value
+///
+/// $parent: Arc<RefCell<PageNode>>
+/// $value: &serde_yaml::Value
+#[macro_export]
+macro_rules! parse_value {
+    ($parent:expr, $value:expr) => {{
+        let child = Arc::new(RefCell::new(PageNode::new($parent.borrow().o.clone())));
+        child.borrow_mut().set_parent($parent.clone());
+        Parser::add_value(child.clone(), $value);
+        format!("{}", child.borrow()).into_boxed_str()
+    }};
+}
+
+/// Define a variable from YAML
+///
+/// Define a variable in YAML into a target PageNode
+/// Usage:
+/// ```YAML
+/// !DEF: [key, val]
+/// ```
 pub fn def(target: Arc<RefCell<PageNode>>, tv: &TaggedValue) {
     if tv.value.is_sequence() {
         let s = tv.value.as_sequence().unwrap();
         if s.len() == 2 {
-            let kstr = target.borrow().parse_string(s[0].as_str().unwrap().into());
-            let vstr = target.borrow().parse_string(s[1].as_str().unwrap().into());
+            let kstr = parse_value!(target, &s[0]);
+            let vstr = parse_value!(target, &s[1]);
             info!(target.borrow().o, "Registering variable {kstr}...");
             target.borrow_mut().register_var(kstr, vstr);
         }
@@ -29,7 +51,70 @@ pub fn def(target: Arc<RefCell<PageNode>>, tv: &TaggedValue) {
     }
 }
 
-/// convert a serde_yaml::Value to a String
+/// Iterate over some data provided through YAML according to a template
+///
+/// Usage:
+/// ```YAML
+/// !FOREACH [
+///   [x, y, ..., n],              # Variable names for use in template
+///   "${x} ${y} ${n}",            # Template for values to be inserted into
+///   [xval, yval, ..., nval],     # One set of values to insert into the template
+///   [xval2, yval2, ..., zval2],  # Another set of values
+/// ]
+/// ```
+pub fn foreach(target: Arc<RefCell<PageNode>>, tv: &TaggedValue) {
+    info!(target.borrow().o, "Looping into !FOREACH directive...");
+    match &tv.value {
+        Value::Sequence(foreach) => 'invalid_foreach: {
+            // ensure preconditions
+            if foreach.len() < 3 || !foreach[0].is_sequence() {
+                break 'invalid_foreach;
+            };
+            let keys = foreach[0]
+                .as_sequence()
+                .unwrap()
+                .iter()
+                .map(|k| parse_value!(target, k))
+                .collect::<Vec<Box<str>>>();
+
+            // iterate over all subsequences in the rest of foreach
+            for values in foreach.iter().skip(2) {
+                match values {
+                    Value::Sequence(seq) => {
+                        if seq.len() != keys.len() {
+                            break 'invalid_foreach;
+                        }
+                        // create new child
+                        let child =
+                            Arc::new(RefCell::new(PageNode::new(target.borrow().o.clone())));
+                        child.borrow_mut().set_parent(target.clone());
+                        target.borrow_mut().add_child(child.clone());
+                        // register vars
+                        seq.iter().enumerate().for_each(|(i, v)| {
+                            let vstr = parse_value!(child, v);
+                            child
+                                .borrow_mut()
+                                .register_var(keys[i].clone().into(), vstr.into());
+                        });
+                        // apply template string
+                        Parser::add_value(child, &foreach[1]);
+                    }
+                    _ => (),
+                }
+            }
+            return;
+        }
+        _ => (),
+    }
+    // if fail
+    error!(
+        target.borrow().o,
+        "Invalid arguments to !FOREACH directive: {}",
+        value_tostring(&tv.value)
+    );
+}
+
+/// Convert a serde_yaml::Value to a String
 fn value_tostring(val: &Value) -> String {
     return match val {
         Value::Null => "NULL".to_string(),
@@ -66,19 +151,63 @@ mod tests {
     use clap::Parser as ClapParser;
     use serde_yaml::Number;
 
-    /// Ensure Parser can handle TaggedValues and follow their directives
+    /// Ensure Parser can handle !FOREACH and follow its directives
     #[test]
-    fn test_tagged() {
+    fn test_foreach() {
         let o = Arc::new(Args::parse_from(["", "-i", "./", "-o", "/tmp/", "-d"]).build_options());
+        let mut p = Parser::new(o.clone());
+        p.parse_yaml(
+            r#"
+!FOREACH [
+  [x],
+  "<div>{x}</div>",
+  [text1],
+  [text2],
+  [text3],
+]
+"#,
+        );
+        assert_eq!(
+            format!("{}", p),
+            "<div>text1</div><div>text2</div><div>text3</div>"
+        );
+
+        let mut p = Parser::new(o.clone());
+        p.parse_yaml(
+            r#"
+!FOREACH [
+  [x, y, z],
+  div: '{x}{y}{z}',
+  [text1, abc, 123],
+  [text2, def, 456],
+  [text3, ghi, 789],
+]
+"#,
+        );
+        assert_eq!(
+            format!("{}", p),
+            "<div>text1abc123</div><div>text2def456</div><div>text3ghi789</div>"
+        );
+    }
+
+    /// Ensure Parser can handle !DEF and follow its directives
+    #[test]
+    fn test_def() {
+        let o = Arc::new(Args::parse_from(["", "-i", "./", "-o", "/tmp/", "-s"]).build_options());
         let mut p = Parser::new(o.clone());
         p.parse_yaml(
             r#"
 - !DEF [x, y]
 - '{x}'
+- a:
+    - !DEF [x, z]
+    - '{x}'
+- [!DEF [x, w], '{x}']
+- '{x}'
 "#,
         );
 
-        assert_eq!(format!("{}", p), "y");
+        assert_eq!(format!("{}", p), "y<a>z</a>wy");
     }
 
     #[test]

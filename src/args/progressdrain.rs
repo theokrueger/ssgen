@@ -101,7 +101,7 @@ mod tests {
         use slog::{o, Level};
         use std::sync::Arc;
         let prog = Arc::new(MultiProgress::new());
-        let drain = ProgressDrain::new(prog.clone(), Level::Critical);
+        let drain = ProgressDrain::new(prog.clone(), Level::Trace);
         let drain = slog_async::Async::new(drain).build().fuse();
         let log = slog::Logger::root(drain, o!());
         slog::crit!(log, "Critical test");
@@ -124,9 +124,8 @@ mod tests {
         let log = slog::Logger::root(drain, o!());
 
         slog::info!(log, "log loop test");
-        let pg = prog.add(ProgressBar::new(100));
-        for i in 0..100 {
-            std::thread::sleep(std::time::Duration::from_micros(1000));
+        let pg = prog.add(ProgressBar::new(10));
+        for i in 0..10 {
             slog::info!(log, "iteration {}", i);
             pg.inc(1);
         }

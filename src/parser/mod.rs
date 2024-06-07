@@ -11,7 +11,7 @@ use serde_yaml::{value::TaggedValue, Deserializer, Mapping, Sequence, Value};
 use std::{cell::RefCell, fmt, sync::Arc};
 
 /* LOCAL IMPORTS */
-use crate::{debug, error, info, warn, Options, PageNode};
+use crate::{debug, error, info, parse_value, warn, Options, PageNode};
 mod directives;
 
 /* PARSER */
@@ -102,17 +102,10 @@ impl Parser {
                 }
                 Value::Mapping(map) => {
                     map.iter().for_each(|(k, v)| {
-                        // parse k as string only TODO this might cause issues
-                        // can a key Value not be a string?
-                        debug_assert!(k.is_string()); // TODO
-                        let kstr = target.borrow().parse_string(k.as_str().unwrap().into());
+                        let kstr = parse_value!(target, k);
 
                         if kstr.len() > 0 && &kstr[..1] == "_" {
-                            // leading underscore for key indicates metadata
-                            let child =
-                                Arc::new(RefCell::new(PageNode::new(target.borrow().o.clone())));
-                            Parser::add_value(child.clone(), v);
-                            let vstr = format!("{}", child.borrow());
+                            let vstr = parse_value!(target, v);
                             target
                                 .borrow_mut()
                                 .add_metadata((kstr[1..].into(), vstr.into()));
@@ -134,21 +127,16 @@ impl Parser {
     /// Create a PageNode for Mapping element and add it to target
     fn parse_map(target: Arc<RefCell<PageNode>>, map: &Mapping) {
         map.iter().for_each(|(k, v)| {
-            let child = Arc::new(RefCell::new(PageNode::new(target.borrow().o.clone())));
-            // parse k as string only TODO this might cause issues
-            // can a key Value not be a string?
-            debug_assert!(k.is_string()); // TODO
-            let kstr = target.borrow().parse_string(k.as_str().unwrap().into());
-
+            let kstr = parse_value!(target, k);
             if kstr.len() > 0 && &kstr[..1] == "_" {
                 // leading underscore for key indicates metadata
-                Parser::add_value(child.clone(), v);
-                let vstr = format!("{}", child.borrow());
+                let vstr = parse_value!(target, v);
                 target
                     .borrow_mut()
                     .add_metadata((kstr[1..].into(), vstr.into()));
             } else {
                 // no leading unnderscore means parse as normal data
+                let child = Arc::new(RefCell::new(PageNode::new(target.borrow().o.clone())));
                 child.borrow_mut().set_parent(target.clone());
                 child.borrow_mut().set_name(kstr.into());
                 Parser::add_value(child.clone(), v);
@@ -162,7 +150,7 @@ impl Parser {
         let tag: String = tv.tag.to_string();
         match tag.as_str() {
             "!DEF" => directives::def(target, tv),
-            // "!FOREACH" => return self.directive_foreach(tv),
+            "!FOREACH" => directives::foreach(target, tv),
             // "!INCLUDE" => return self.directive_include(tv),
             // "!IF" => return self.directive_if(tv),
             // "!COPY" => self.directive_copy(tv),
