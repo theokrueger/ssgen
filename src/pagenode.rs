@@ -89,7 +89,7 @@ impl PageNode {
             Some(p) => return p.borrow().get_var(k),
             None => {
                 warn!(self.o, "Undefined variable {k}");
-                return "UNDEFINED".to_string().into_boxed_str();
+                return "".to_string().into_boxed_str();
             }
         }
     }
@@ -343,7 +343,7 @@ mod tests {
 
         let mut node = PageNode::new(o.clone());
         node.add_content("{undefined variable}".into());
-        assert_eq!(format!("{}", node), "UNDEFINED");
+        assert_eq!(format!("{}", node), "");
 
         let node = Arc::new(RefCell::new(PageNode::new(o.clone())));
         node.borrow_mut().register_var("x".into(), "y".into());

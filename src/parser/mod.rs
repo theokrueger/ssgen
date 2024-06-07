@@ -152,7 +152,7 @@ impl Parser {
             "!DEF" => directives::def(target, tv),
             "!FOREACH" => directives::foreach(target, tv),
             // "!INCLUDE" => return self.directive_include(tv),
-            // "!IF" => return self.directive_if(tv),
+            "!IF" => directives::if_else(target, tv),
             // "!COPY" => self.directive_copy(tv),
             // no matching directive
             _ => warn!(target.borrow().o, "No matching directive for {tag}"),
@@ -254,7 +254,7 @@ NULL
 
         assert_eq!(
             format!("{}", p),
-            r#"{ escaped brace\ escaped backslash\\ escaped double backslash\UNDEFINED"#
+            r#"{ escaped brace\ escaped backslash\\ escaped double backslash\"#
         );
     }
 
@@ -270,6 +270,21 @@ bad: yaml
 error: a: b: c: d: e
 "#,
         );
+    }
+
+    /// Ensure miscelanous tests work
+    #[test]
+    fn test_misc() {
+        let o = Arc::new(Args::parse_from(["", "-i", "./", "-o", "/tmp/", "-s"]).build_options());
+        let mut p = Parser::new(o.clone());
+        let pb = Arc::new(ProgressBar::new(10));
+        p.add_progressbar(pb.clone());
+        p.parse_yaml(
+            r#"
+!INVALIDDIRECTIVE =D
+"#,
+        );
+        assert_eq!(format!("{}", p), "");
     }
 
     /// Ensure Parser can handle `Value::Mapping`

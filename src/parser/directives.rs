@@ -26,6 +26,42 @@ macro_rules! parse_value {
     }};
 }
 
+/// If a value exists / is not an empty string, do something. Otherwise, do something else (if it exists)
+///
+/// Usage:
+/// ```YAML
+/// !IF [condition, exec if true, ?exec if false]
+/// ```
+/// Where `?exec if false` is optional
+pub fn if_else(target: Arc<RefCell<PageNode>>, tv: &TaggedValue) {
+    debug!(target.borrow().o, "Evaluating conditional...");
+    match &tv.value {
+        Value::Sequence(seq) => {
+            if seq.len() >= 2 && seq.len() <= 3 {
+                let condition = parse_value!(target, &seq[0]).to_string();
+                match condition.as_str() {
+                    "" => {
+                        // exec 'else' block
+                        if seq.len() == 3 {
+                            Parser::add_value(target.clone(), &seq[2]);
+                        }
+                    }
+                    _ => {
+                        // exec 'if' block
+                        Parser::add_value(target.clone(), &seq[1]);
+                    }
+                }
+            }
+        }
+        _ => (),
+    }
+    error!(
+        target.borrow().o,
+        "Incorrectly formatted conditional: {}",
+        value_tostring(&tv.value)
+    );
+}
+
 /// Define a variable from YAML
 ///
 /// Define a variable in YAML into a target PageNode
@@ -154,7 +190,7 @@ mod tests {
     /// Ensure Parser can handle !FOREACH and follow its directives
     #[test]
     fn test_foreach() {
-        let o = Arc::new(Args::parse_from(["", "-i", "./", "-o", "/tmp/", "-d"]).build_options());
+        let o = Arc::new(Args::parse_from(["", "-i", "./", "-o", "/tmp/", "-s"]).build_options());
         let mut p = Parser::new(o.clone());
         p.parse_yaml(
             r#"
@@ -182,12 +218,40 @@ mod tests {
   [text2, def, 456],
   [text3, ghi, 789],
 ]
+---
+- !FOREACH [[invalid,],]
+- !FOREACH [[nonamatching, keys, length,], '', [a,],]
+- !FOREACH not a sequence
+- !FOREACH [[x], '', not a sequence,]
 "#,
         );
         assert_eq!(
             format!("{}", p),
             "<div>text1abc123</div><div>text2def456</div><div>text3ghi789</div>"
         );
+    }
+
+    /// Ensure Parser can handle !IF and follow its directives
+    #[test]
+    fn test_if() {
+        let o = Arc::new(Args::parse_from(["", "-i", "./", "-o", "/tmp/", "-s"]).build_options());
+        let mut p = Parser::new(o.clone());
+        p.parse_yaml(
+            r#"
+- !DEF [x, y]
+- !IF ['{x}', z]
+- !IF ['{y}', x, q]
+- !IF [
+    '',
+    [se, qu, en, ce],
+    {p: text,},
+  ]
+- !IF [a, b, c, d, e, f, g]
+- !IF not a sequence
+"#,
+        );
+
+        assert_eq!(format!("{}", p), "zq<p>text</p>");
     }
 
     /// Ensure Parser can handle !DEF and follow its directives
@@ -204,6 +268,8 @@ mod tests {
     - '{x}'
 - [!DEF [x, w], '{x}']
 - '{x}'
+- !DEF [incorrect, size, arguments, aaaaaaa,]
+- !DEF this is not a sequence
 "#,
         );
 
