@@ -8,7 +8,12 @@
 use indicatif::ProgressBar;
 use serde::Deserialize;
 use serde_yaml::{value::TaggedValue, Deserializer, Mapping, Sequence, Value};
-use std::{cell::RefCell, fmt, sync::Arc};
+use std::{
+    cell::RefCell,
+    fmt,
+    path::{Path, PathBuf},
+    sync::Arc,
+};
 
 /* LOCAL IMPORTS */
 use crate::{debug, error, info, parse_value, warn, Options, PageNode};
@@ -24,15 +29,31 @@ pub struct Parser {
 
     /// indicatif ProgressBar that gets incremented once parsing is completed
     progressbar: Option<Arc<ProgressBar>>,
+
+    /// Path of initially parsed file
+    root_dir: Option<PathBuf>,
 }
 
 impl Parser {
+    /// Create a new, empty Parser
+    pub fn new(o: Arc<Options>) -> Parser {
+        debug!(o, "Creating new Parser...");
+        return Parser {
+            root_node: Arc::new(RefCell::new(PageNode::new(o.clone()))),
+            progressbar: None,
+            o: o,
+            root_dir: None,
+        };
+    }
+
     /// Parse a string into the PageNode
     pub fn parse_yaml(&mut self, yaml: &str) {
-        debug!(self.o, "Parsing YAML");
+        debug!(self.o, "Parsing YAML...");
         for doc in Deserializer::from_str(yaml) {
             match Value::deserialize(doc) {
-                Ok(input) => Parser::add_value(self.root_node.clone(), &input),
+                Ok(input) => {
+                    Parser::add_value(self.root_node.clone(), &input, self.root_dir.clone())
+                }
                 Err(e) => panic!("Error while parsing YAML: {}", e),
             }
         }
@@ -46,19 +67,15 @@ impl Parser {
         }
     }
 
-    /// Create a new, empty Parser
-    pub fn new(o: Arc<Options>) -> Parser {
-        debug!(o, "Creating new Parser...");
-        return Parser {
-            root_node: Arc::new(RefCell::new(PageNode::new(o.clone()))),
-            progressbar: None,
-            o: o,
-        };
-    }
-
     /// Add a progressbar to the struct
     pub fn add_progressbar(&mut self, pb: Arc<ProgressBar>) {
         self.progressbar = Some(pb);
+    }
+
+    /// Set the root file in the struct
+    pub fn set_root_dir(&mut self, f: PathBuf) {
+        info!(self.o, "Setting root directory to {}", f.display());
+        self.root_dir = Some(f);
     }
 
     /// Add a ```serde_yaml::Value``` into self
@@ -69,7 +86,7 @@ impl Parser {
     /// - `Mapping`: Convert Mapping into PageNode
     /// - `TaggedValue`: Follow the !TAG directive
     /// TODO cleanup the function
-    fn add_value(target: Arc<RefCell<PageNode>>, val: &Value) {
+    fn add_value(target: Arc<RefCell<PageNode>>, val: &Value, dir: Option<PathBuf>) {
         match val {
             // primitives just get read as strings
             Value::Null => (),
@@ -79,33 +96,33 @@ impl Parser {
 
             // sequence gets flattened and all elements become their own PageNode in target's children
             // UNLESS the element in the sequence is a mapping where key starts with a "_" (metadata)
-            Value::Sequence(seq) => Parser::parse_seq(target, seq),
+            Value::Sequence(seq) => Parser::parse_seq(target, seq, dir),
 
             // key becomes name of new pagenode and value becomes child(ren) or content
             Value::Mapping(map) => {
-                Parser::parse_map(target, map);
+                Parser::parse_map(target, map, dir);
             }
-            Value::Tagged(t) => Parser::parse_tagged(target, t),
+            Value::Tagged(t) => Parser::parse_tagged(target, t, dir),
         };
     }
 
     /// Create a PageNode for each element and add it as a nameless child
     /// If an element in the sequence would be metadata, instead add it to the parent's metadata
     /// This is achieved by just forwarding mappings to parse_map
-    fn parse_seq(target: Arc<RefCell<PageNode>>, seq: &Sequence) {
+    fn parse_seq(target: Arc<RefCell<PageNode>>, seq: &Sequence, dir: Option<PathBuf>) {
         for i in seq.iter() {
             let mut skip = false;
             match i {
                 Value::Tagged(t) => {
-                    Parser::parse_tagged(target.clone(), t);
+                    Parser::parse_tagged(target.clone(), t, dir.clone());
                     skip = true;
                 }
                 Value::Mapping(map) => {
                     map.iter().for_each(|(k, v)| {
-                        let kstr = parse_value!(target, k);
+                        let kstr = parse_value!(target, k, dir.clone());
 
                         if kstr.len() > 0 && &kstr[..1] == "_" {
-                            let vstr = parse_value!(target, v);
+                            let vstr = parse_value!(target, v, dir.clone());
                             target
                                 .borrow_mut()
                                 .add_metadata((kstr[1..].into(), vstr.into()));
@@ -119,18 +136,18 @@ impl Parser {
                 let child = Arc::new(RefCell::new(PageNode::new(target.borrow().o.clone())));
                 child.borrow_mut().set_parent(target.clone());
                 target.borrow_mut().add_child(child.clone());
-                Parser::add_value(child.clone(), i);
+                Parser::add_value(child.clone(), i, dir.clone());
             }
         }
     }
 
     /// Create a PageNode for Mapping element and add it to target
-    fn parse_map(target: Arc<RefCell<PageNode>>, map: &Mapping) {
+    fn parse_map(target: Arc<RefCell<PageNode>>, map: &Mapping, dir: Option<PathBuf>) {
         map.iter().for_each(|(k, v)| {
-            let kstr = parse_value!(target, k);
+            let kstr = parse_value!(target, k, dir.clone());
             if kstr.len() > 0 && &kstr[..1] == "_" {
                 // leading underscore for key indicates metadata
-                let vstr = parse_value!(target, v);
+                let vstr = parse_value!(target, v, dir.clone());
                 target
                     .borrow_mut()
                     .add_metadata((kstr[1..].into(), vstr.into()));
@@ -139,20 +156,20 @@ impl Parser {
                 let child = Arc::new(RefCell::new(PageNode::new(target.borrow().o.clone())));
                 child.borrow_mut().set_parent(target.clone());
                 child.borrow_mut().set_name(kstr.into());
-                Parser::add_value(child.clone(), v);
+                Parser::add_value(child.clone(), v, dir.clone());
                 target.borrow_mut().add_child(child.clone());
             }
         });
     }
 
     /// Parse a TaggedValue and follow its directive
-    fn parse_tagged(target: Arc<RefCell<PageNode>>, tv: &TaggedValue) {
+    fn parse_tagged(target: Arc<RefCell<PageNode>>, tv: &TaggedValue, dir: Option<PathBuf>) {
         let tag: String = tv.tag.to_string();
         match tag.as_str() {
             "!DEF" => directives::def(target, tv),
-            "!FOREACH" => directives::foreach(target, tv),
-            // "!INCLUDE" => return self.directive_include(tv),
-            "!IF" => directives::if_else(target, tv),
+            "!FOREACH" => directives::foreach(target, tv, dir),
+            "!INCLUDE" => directives::include(target, tv, dir),
+            "!IF" => directives::if_else(target, tv, dir),
             // "!COPY" => self.directive_copy(tv),
             // no matching directive
             _ => warn!(target.borrow().o, "No matching directive for {tag}"),
@@ -178,6 +195,7 @@ mod tests {
     fn test_simple() {
         let o = Arc::new(Args::parse_from(["", "-i", "./", "-o", "/tmp/", "-s"]).build_options());
         let mut p = Parser::new(o.clone());
+        p.set_root_dir(PathBuf::from("/tmp/"));
         p.parse_yaml(
             r#"
 string

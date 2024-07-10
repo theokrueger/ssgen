@@ -2,4 +2,4 @@
 \#*
 \~*
 *.save
-
+*.sync-conflict*

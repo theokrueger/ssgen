@@ -1,0 +1,3 @@
+#version = "Two"
+hard_tabs = false
+#tab_spaces = 8 # broken on stable, wait for nightly version = "Two" to work

@@ -4,9 +4,15 @@
 
 /* IMPORTS */
 use indicatif::ProgressBar;
+use pathdiff::diff_paths;
 use serde::Deserialize;
 use serde_yaml::{value::TaggedValue, Deserializer, Mapping, Sequence, Value};
-use std::{cell::RefCell, fmt, sync::Arc};
+use std::{
+    cell::RefCell,
+    fmt, fs,
+    path::{Path, PathBuf},
+    sync::Arc,
+};
 
 /* LOCAL IMPORTS */
 use crate::{debug, error, info, warn, Options, PageNode, Parser};
@@ -18,10 +24,10 @@ use crate::{debug, error, info, warn, Options, PageNode, Parser};
 /// $value: &serde_yaml::Value
 #[macro_export]
 macro_rules! parse_value {
-    ($parent:expr, $value:expr) => {{
+    ($parent:expr, $value:expr, $dir:expr) => {{
         let child = Arc::new(RefCell::new(PageNode::new($parent.borrow().o.clone())));
         child.borrow_mut().set_parent($parent.clone());
-        Parser::add_value(child.clone(), $value);
+        Parser::add_value(child.clone(), $value, $dir);
         format!("{}", child.borrow()).into_boxed_str()
     }};
 }
@@ -33,22 +39,22 @@ macro_rules! parse_value {
 /// !IF [condition, exec if true, ?exec if false]
 /// ```
 /// Where `?exec if false` is optional
-pub fn if_else(target: Arc<RefCell<PageNode>>, tv: &TaggedValue) {
+pub fn if_else(target: Arc<RefCell<PageNode>>, tv: &TaggedValue, dir: Option<PathBuf>) {
     debug!(target.borrow().o, "Evaluating conditional...");
     match &tv.value {
         Value::Sequence(seq) => {
             if seq.len() >= 2 && seq.len() <= 3 {
-                let condition = parse_value!(target, &seq[0]).to_string();
-                match condition.as_str() {
+                let condition = parse_value!(target, &seq[0], dir.clone());
+                match &condition[..] {
                     "" => {
                         // exec 'else' block
                         if seq.len() == 3 {
-                            Parser::add_value(target.clone(), &seq[2]);
+                            Parser::add_value(target.clone(), &seq[2], dir.clone());
                         }
                     }
                     _ => {
                         // exec 'if' block
-                        Parser::add_value(target.clone(), &seq[1]);
+                        Parser::add_value(target.clone(), &seq[1], dir.clone());
                     }
                 }
             }
@@ -62,6 +68,99 @@ pub fn if_else(target: Arc<RefCell<PageNode>>, tv: &TaggedValue) {
     );
 }
 
+/// Include another YAML file inside this page
+///
+/// File name/extension does not matter, it is on the user to ensure it is a properly formatted YAML file
+/// - Relative files are relative to the currently parsed file
+/// - Absolute files use the specified source directory as the root folder
+/// - Files outside of the source directory and its subdirectories should not be accessed
+/// Usage:
+/// ```YAML
+/// !INCLUDE relative/file_to_include.page
+/// !INCLUDE /absolute/file_to_include.page
+/// ```
+pub fn include(target: Arc<RefCell<PageNode>>, tv: &TaggedValue, dir: Option<PathBuf>) {
+    let s = parse_value!(target, &tv.value, dir.clone());
+    info!(target.borrow().o, "Including file {s}...");
+
+    'valid_include: {
+        if s.len() == 0 {
+            break 'valid_include;
+        }
+
+        let p = Arc::new(RefCell::new(PageNode::new(target.borrow().o.clone())));
+
+        let mut path = PathBuf::new();
+        if &s[..1] == "/" {
+            // absolute path (root is project root)
+            path.push(target.borrow().o.input.clone());
+            path.push(&s[1..]);
+        } else {
+            // relative path
+            path.push(match dir {
+                Some(d) => d.to_path_buf(),
+                None => target.borrow().o.input.clone(),
+            });
+            path.push(&s[..]);
+        }
+
+        // canonicalise file path
+        let file = match fs::canonicalize(&path) {
+            Ok(p) => p,
+            Err(e) => {
+                error!(
+                    target.borrow().o,
+                    "File at '{path}' undable to canonicalise: '{e}'",
+                    path = &path.display(),
+                );
+                break 'valid_include;
+            }
+        };
+        // ensure target file is a subnode of the input directory
+        if !file.as_path().starts_with(target.borrow().o.input.clone()) {
+            error!(
+                target.borrow().o,
+                "File {f} does not reside in the input directory!",
+                f = file.display()
+            );
+            break 'valid_include;
+        }
+
+        // read the file's YAML into a PageNode
+        match fs::read_to_string(file.clone()) {
+            Ok(yaml) => {
+                for doc in Deserializer::from_str(yaml.as_str()) {
+                    match Value::deserialize(doc) {
+                        Ok(input) => {
+                            // swap current file directory
+                            let mut new_dir = file.clone();
+                            new_dir.pop();
+                            Parser::add_value(p.clone(), &input, Some(new_dir))
+                        }
+                        Err(e) => panic!("Error while parsing YAML: {}", e),
+                    }
+                }
+            }
+            Err(e) => {
+                error!(
+                    target.borrow().o,
+                    "Error reading file {f} | {e}",
+                    f = file.display()
+                );
+                break 'valid_include;
+            }
+        }
+        target.borrow_mut().add_child(p);
+
+        return;
+    }
+    error!(
+        target.borrow().o,
+        "Invalid arguments to !INCLUDE directive: {}",
+        value_tostring(&tv.value)
+    )
+}
+
 /// Define a variable from YAML
 ///
 /// Define a variable in YAML into a target PageNode
@@ -73,8 +172,8 @@ pub fn def(target: Arc<RefCell<PageNode>>, tv: &TaggedValue) {
     if tv.value.is_sequence() {
         let s = tv.value.as_sequence().unwrap();
         if s.len() == 2 {
-            let kstr = parse_value!(target, &s[0]);
-            let vstr = parse_value!(target, &s[1]);
+            let kstr = parse_value!(target, &s[0], None);
+            let vstr = parse_value!(target, &s[1], None);
             info!(target.borrow().o, "Registering variable {kstr}...");
             target.borrow_mut().register_var(kstr, vstr);
         }
@@ -98,7 +197,7 @@ pub fn def(target: Arc<RefCell<PageNode>>, tv: &TaggedValue) {
 ///   [xval2, yval2, ..., zval2],  # Another set of values
 /// ]
 /// ```
-pub fn foreach(target: Arc<RefCell<PageNode>>, tv: &TaggedValue) {
+pub fn foreach(target: Arc<RefCell<PageNode>>, tv: &TaggedValue, dir: Option<PathBuf>) {
     info!(target.borrow().o, "Looping into !FOREACH directive...");
     match &tv.value {
         Value::Sequence(foreach) => 'invalid_foreach: {
@@ -110,7 +209,7 @@ pub fn foreach(target: Arc<RefCell<PageNode>>, tv: &TaggedValue) {
                 .as_sequence()
                 .unwrap()
                 .iter()
-                .map(|k| parse_value!(target, k))
+                .map(|k| parse_value!(target, k, dir.clone()))
                 .collect::<Vec<Box<str>>>();
 
             // iterate over all subsequences in the rest of foreach
@@ -127,13 +226,13 @@ pub fn foreach(target: Arc<RefCell<PageNode>>, tv: &TaggedValue) {
                         target.borrow_mut().add_child(child.clone());
                         // register vars
                         seq.iter().enumerate().for_each(|(i, v)| {
-                            let vstr = parse_value!(child, v);
+                            let vstr = parse_value!(child, v, dir.clone());
                             child
                                 .borrow_mut()
                                 .register_var(keys[i].clone().into(), vstr.into());
                         });
                         // apply template string
-                        Parser::add_value(child, &foreach[1]);
+                        Parser::add_value(child, &foreach[1], dir.clone());
                     }
                     _ => (),
                 }
@@ -142,11 +241,16 @@ pub fn foreach(target: Arc<RefCell<PageNode>>, tv: &TaggedValue) {
         }
         _ => (),
     }
+    let s = value_tostring(&tv.value);
     // if fail
     error!(
         target.borrow().o,
         "Invalid arguments to !FOREACH directive: {}",
-        value_tostring(&tv.value)
+        if s.len() > 100 {
+            format!("{}...", &s[..99])
+        } else {
+            s
+        }
     );
 }
 
@@ -186,6 +290,7 @@ mod tests {
     use crate::{Args, Parser};
     use clap::Parser as ClapParser;
     use serde_yaml::Number;
+    use std::{fs, fs::File, io::Write};
 
     /// Ensure Parser can handle !FOREACH and follow its directives
     #[test]
@@ -252,6 +357,69 @@ mod tests {
         );
 
         assert_eq!(format!("{}", p), "zq<p>text</p>");
+    }
+
+    /// Ensure Parser can handle !INCLUDE and follow its directives
+    #[test]
+    fn test_include() {
+        fs::create_dir_all("/tmp/ssgen_test_source_dir_include").unwrap();
+        let o = Arc::new(
+            Args::parse_from([
+                "",
+                "-i",
+                "/tmp/ssgen_test_source_dir_include",
+                "-o",
+                "/tmp/",
+                "-s",
+            ])
+            .build_options(),
+        );
+
+        // include a file that does not exist
+        let mut p = Parser::new(o.clone());
+        p.parse_yaml(
+            r#"
+!INCLUDE /nonexistent_file.page
+"#,
+        );
+        assert_eq!(format!("{}", p), "");
+
+        // include a file that should not be accessed
+        let mut p = Parser::new(o.clone());
+        let mut out = File::create("/tmp/inaccessible_file.page").unwrap();
+        out.write_all(b"p: content").unwrap();
+
+        p.parse_yaml(
+            r#"
+!INCLUDE /../inaccessible_file.page
+"#,
+        );
+        assert_eq!(format!("{}", p), "");
+
+        // include a file that is valid
+        let mut p = Parser::new(o.clone());
+        let mut out = File::create("/tmp/ssgen_test_source_dir_include/valid_file.page").unwrap();
+        out.write_all(b"p: content").unwrap();
+        fs::create_dir_all("/tmp/ssgen_test_source_dir_include/inc").unwrap();
+        let mut out2 =
+            File::create("/tmp/ssgen_test_source_dir_include/inc/another_valid_file.page").unwrap();
+        out2.write_all(b"- !INCLUDE /valid_file.page\n- !INCLUDE ../valid_file.page")
+            .unwrap();
+
+        p.parse_yaml(
+            r#"
+- !INCLUDE
+- !INCLUDE /valid_file.page
+- sep
+- !INCLUDE valid_file.page
+- !INCLUDE inc/another_valid_file.page
+"#,
+        );
+
+        assert_eq!(
+            format!("{}", p),
+            "<p>content</p>sep<p>content</p><p>content</p><p>content</p>"
+        );
     }
 
     /// Ensure Parser can handle !DEF and follow its directives

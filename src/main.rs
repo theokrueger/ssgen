@@ -68,6 +68,9 @@ fn main() {
         let thread_pagebar = pagebar.clone();
         handlers.push(thread::spawn(move || {
             let mut parser = Parser::new(thread_o.clone());
+            let mut root_file = thread_pagefile.clone();
+            root_file.pop();
+            parser.set_root_dir(root_file.into());
             parser.add_progressbar(thread_pagebar);
             // read input
             info!(thread_o, "Reading file {}", thread_pagefile.display());
