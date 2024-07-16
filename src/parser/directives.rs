@@ -186,7 +186,7 @@ pub fn copy(target: Arc<RefCell<PageNode>>, tv: &TaggedValue, dir: Option<PathBu
         dest.push(
             match source.clone().strip_prefix(target.borrow().o.input.clone()) {
                 Ok(s) => s,
-                Err(e) => panic!("THIS SHOULDN'T EVER HAPPEN BUT IM TOO SCARED TO UNWRAP IT (strip_prefix of input from source failed)"),
+                Err(e) => panic!("THIS SHOULDN'T EVER HAPPEN BUT IM TOO SCARED TO UNWRAP IT (strip_prefix of input from source failed: {e})"),
             },
         );
 
@@ -242,6 +242,7 @@ pub fn include(target: Arc<RefCell<PageNode>>, tv: &TaggedValue, dir: Option<Pat
 
     'valid_include: {
         let p = Arc::new(RefCell::new(PageNode::new(target.borrow().o.clone())));
+        p.borrow_mut().set_parent(target.clone());
 
         let file = match resolve_input_path(target.clone(), &s, dir.clone()) {
             Ok(p) => p,
@@ -418,6 +419,64 @@ mod tests {
     use clap::Parser as ClapParser;
     use serde_yaml::Number;
     use std::{fs, fs::File, io::Write};
+
+    /// Ensure that combining directives does not cause issues
+    #[test]
+    fn test_directives_combined() {
+        fs::create_dir_all("/tmp/ssgen_test_source_dir_combined").unwrap();
+        let o = Arc::new(
+            Args::parse_from([
+                "",
+                "-i",
+                "/tmp/ssgen_test_source_dir_combined",
+                "-o",
+                "/tmp/",
+                "-s",
+            ])
+            .build_options(),
+        );
+
+        let mut p = Parser::new(o.clone());
+        let mut index = File::create("/tmp/ssgen_test_source_dir_combined/index.page").unwrap();
+        index
+            .write_all(
+                br#"
+- !DEF [
+    x,
+    !FOREACH [
+      [y],
+      "{y}",
+      ["a"],
+      ["b"]
+    ]
+  ]
+- p: "{x}"
+- !INCLUDE include.block
+"#,
+            )
+            .unwrap();
+
+        let mut include =
+            File::create("/tmp/ssgen_test_source_dir_combined/include.block").unwrap();
+        include
+            .write_all(
+                br#"
+- p:
+    !IF ['{x}', '{x}', "nothing"]
+- '{x}': asdf
+- !DEF [var2, thisshouldntdoathing]
+"#,
+            )
+            .unwrap();
+
+        p.parse_yaml(
+            r#"
+!INCLUDE /index.page
+"#,
+        );
+
+        assert_eq!(format!("{}", p), "<p>ab</p><p>ab</p><ab>asdf</ab>");
+    }
 
     /// Ensure Parser can handle !FOREACH and follow its directives
     #[test]
@@ -626,7 +685,7 @@ mod tests {
             "<p>content</p>sep<p>content</p><p>content</p><p>content</p>"
         );
 
-        fs::create_dir_all("/tmp/ssgen_test_source_dir_include").unwrap();
+        fs::remove_dir_all("/tmp/ssgen_test_source_dir_include").unwrap();
     }
 
     /// Ensure Parser can handle !DEF and follow its directives

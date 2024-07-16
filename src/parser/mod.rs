@@ -8,13 +8,7 @@
 use indicatif::ProgressBar;
 use serde::Deserialize;
 use serde_yaml::{value::TaggedValue, Deserializer, Mapping, Sequence, Value};
-use std::{
-    cell::RefCell,
-    collections::HashMap,
-    fmt,
-    path::{Path, PathBuf},
-    sync::Arc,
-};
+use std::{cell::RefCell, collections::HashMap, fmt, path::PathBuf, sync::Arc};
 
 /* LOCAL IMPORTS */
 use crate::{debug, error, info, parse_value, warn, Options, PageNode};
@@ -79,7 +73,7 @@ impl Parser {
     pub fn consume_into_root_node(p: Parser) -> PageNode {
         match Arc::try_unwrap(p.root_node) {
             Ok(ref_pn) => return ref_pn.into_inner(),
-            Err(e) => panic!("Unlawful consumption of Parser!!"),
+            Err(_) => panic!("Unlawful consumption of Parser"),
         }
     }
 

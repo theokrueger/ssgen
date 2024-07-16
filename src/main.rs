@@ -11,13 +11,7 @@ use glob::{glob_with, MatchOptions};
 use indicatif::ProgressBar;
 use pathdiff::diff_paths;
 use std::{
-    collections::HashMap,
-    fs,
-    path::PathBuf,
-    sync::{Arc, Mutex},
-    thread,
-    thread::JoinHandle,
-    time::Instant,
+    collections::HashMap, fs, path::PathBuf, sync::Arc, thread, thread::JoinHandle, time::Instant,
 };
 
 /* LOCAL IMPORTS */
@@ -67,7 +61,7 @@ fn main() {
     // parse the special "META.yaml" file
     let mut meta_file: PathBuf = o.input.clone();
     meta_file.push("META.yaml");
-    let mut meta_vars: HashMap<Box<str>, Box<str>> = PageNode::consume_into_vars(
+    let meta_vars: HashMap<Box<str>, Box<str>> = PageNode::consume_into_vars(
         if meta_file.exists() {
             info!(o, "META.yaml found! Parsing...");
             match fs::read_to_string(meta_file) {
