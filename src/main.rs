@@ -10,7 +10,15 @@ use clap::Parser as ClapParser;
 use glob::{glob_with, MatchOptions};
 use indicatif::ProgressBar;
 use pathdiff::diff_paths;
-use std::{fs, path::PathBuf, sync::Arc, thread, thread::JoinHandle, time::Instant};
+use std::{
+    collections::HashMap,
+    fs,
+    path::PathBuf,
+    sync::{Arc, Mutex},
+    thread,
+    thread::JoinHandle,
+    time::Instant,
+};
 
 /* LOCAL IMPORTS */
 mod args;
@@ -55,19 +63,45 @@ fn main() {
     }
     walkspin.finish();
 
-    // create one thread per page, let the scheduler handle the hard part lol
+    /* METADATA */
+    // parse the special "META.yaml" file
+    let mut meta_file: PathBuf = o.input.clone();
+    meta_file.push("META.yaml");
+    let mut meta_vars: HashMap<Box<str>, Box<str>> = PageNode::consume_into_vars(
+        if meta_file.exists() {
+            info!(o, "META.yaml found! Parsing...");
+            match fs::read_to_string(meta_file) {
+                Ok(s) => {
+                    let mut parser = Parser::new(o.clone());
+                    parser.parse_yaml(s.as_str());
+                    Parser::consume_into_root_node(parser)
+                }
+                Err(e) => {
+                    panic!("Unable to read META.yaml despite file existing, please ensure permissions are correct: {e}");
+                }
+            }
+        } else {
+            info!(o, "META.yaml not found! Creating empty root node");
+            PageNode::new(o.clone())
+        },
+    );
+
+    /* THREADING */
+    // one thread per page, scheduler will handle the hard part for us (TODO RIP memory usage)
     debug!(o, "Creating Page threads!");
     let pagebar = Arc::new(o.progress.add(ProgressBar::new(pages.len() as u64 + 1)));
     o.progress.set_move_cursor(true); // reduces flickering
     pagebar.tick();
 
+    // create threads
     let mut handlers = Vec::<JoinHandle<()>>::new();
     pages.iter().for_each(|p| {
         let thread_pagefile = p.clone();
         let thread_o = o.clone();
         let thread_pagebar = pagebar.clone();
+        let thread_meta_vars = meta_vars.clone();
         handlers.push(thread::spawn(move || {
-            let mut parser = Parser::new(thread_o.clone());
+            let mut parser = Parser::new_with_vars(thread_o.clone(), thread_meta_vars);
             let mut root_file = thread_pagefile.clone();
             root_file.pop();
             parser.set_root_dir(root_file.into());

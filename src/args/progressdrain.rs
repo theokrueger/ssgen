@@ -102,7 +102,6 @@ mod tests {
         use std::sync::Arc;
         let prog = Arc::new(MultiProgress::new());
         let drain = ProgressDrain::new(prog.clone(), Level::Trace);
-        let drain = slog_async::Async::new(drain).build().fuse();
         let log = slog::Logger::root(drain, o!());
         slog::crit!(log, "Critical test");
         slog::error!(log, "Error test");
@@ -120,7 +119,6 @@ mod tests {
         use std::sync::Arc;
         let prog = Arc::new(MultiProgress::new());
         let drain = ProgressDrain::new(prog.clone(), Level::Critical);
-        let drain = slog_async::Async::new(drain).build().fuse();
         let log = slog::Logger::root(drain, o!());
 
         slog::info!(log, "log loop test");

@@ -1,7 +1,7 @@
-# ssgen
+# SSGen
 
-a complex and flexible website builder written in rust.
+A complex and flexible website builder written in Rust.
 
 ## examples
 
-view examples in `examples/`
+View examples in `examples/`

@@ -3,16 +3,9 @@
 //! Includes helper functions to break apart TaggedValue parsing
 
 /* IMPORTS */
-use indicatif::ProgressBar;
-use pathdiff::diff_paths;
 use serde::Deserialize;
-use serde_yaml::{value::TaggedValue, Deserializer, Mapping, Sequence, Value};
-use std::{
-    cell::RefCell,
-    fmt, fs,
-    path::{Path, PathBuf},
-    sync::Arc,
-};
+use serde_yaml::{value::TaggedValue, Deserializer, Value};
+use std::{cell::RefCell, fs, path::PathBuf, sync::Arc};
 
 /* LOCAL IMPORTS */
 use crate::{debug, error, info, warn, Options, PageNode, Parser};
@@ -58,6 +51,7 @@ pub fn if_else(target: Arc<RefCell<PageNode>>, tv: &TaggedValue, dir: Option<Pat
                     }
                 }
             }
+            return;
         }
         _ => (),
     }
@@ -66,6 +60,169 @@ pub fn if_else(target: Arc<RefCell<PageNode>>, tv: &TaggedValue, dir: Option<Pat
         "Incorrectly formatted conditional: {}",
         value_tostring(&tv.value)
     );
+}
+
+/// Get an absolute path to a file that resides (or should reside) in the output directory
+///
+/// Does the following:
+/// - Create a PathBuf to specified file, respecting if it is relative or absolute
+/// - Ensure the file resides in the output directory
+/// - Throw an error if one of the criteria cannot be satisfied
+fn resolve_output_path(
+    target: Arc<RefCell<PageNode>>,
+    path_str: &str,
+    dir: Option<PathBuf>,
+) -> Result<PathBuf, Box<str>> {
+    if path_str.len() == 0 {
+        return Err("Blank path provided!".into());
+    }
+
+    let mut path = PathBuf::new();
+    if &path_str[..1] == "/" {
+        // absolute path (root is output directory)
+        path.push(target.borrow().o.output.clone());
+        path.push(&path_str[1..]);
+    } else {
+        // relative path
+        path.push(match dir {
+            Some(d) => d.to_path_buf(),
+            None => target.borrow().o.input.clone(),
+        });
+        path.push(&path_str[..]);
+    }
+
+    // ensure target file is a subnode of the output directory
+    if !path.as_path().starts_with(target.borrow().o.output.clone()) {
+        return Err(format!(
+            "File {f} does not reside in the output directory!",
+            f = path.display()
+        )
+        .into());
+    }
+
+    return Ok(path);
+}
+
+/// Get an absolute path to a file that resides (or should reside) in the input directory
+///
+/// Does the following:
+/// - Create a PathBuf to specified file, respecting if it is relative or absolute
+/// - Ensure the path points to an actually existing file
+/// - Ensure the file resides in the input directory
+/// - Throw an error if one of the criteria cannot be satisfied
+fn resolve_input_path(
+    target: Arc<RefCell<PageNode>>,
+    path_str: &str,
+    dir: Option<PathBuf>,
+) -> Result<PathBuf, Box<str>> {
+    if path_str.len() == 0 {
+        return Err("Blank path provided!".into());
+    }
+
+    let mut path = PathBuf::new();
+    if &path_str[..1] == "/" {
+        // absolute path (root is input directory)
+        path.push(target.borrow().o.input.clone());
+        path.push(&path_str[1..]);
+    } else {
+        // relative path
+        path.push(match dir {
+            Some(d) => d.to_path_buf(),
+            None => target.borrow().o.input.clone(),
+        });
+        path.push(&path_str[..]);
+    }
+
+    // canonicalise file path
+    let file = match fs::canonicalize(&path) {
+        Ok(p) => p,
+        Err(e) => {
+            return Err(format!(
+                "File at '{path}' unable to canonicalise: '{e}'",
+                path = &path.display(),
+            )
+            .into());
+        }
+    };
+
+    // ensure target file is a subnode of the input directory
+    if !file.as_path().starts_with(target.borrow().o.input.clone()) {
+        return Err(format!(
+            "File {f} does not reside in the input directory!",
+            f = file.display()
+        )
+        .into());
+    }
+
+    return Ok(file);
+}
+
+/// Blindly copy a file from somewhere in the source directory to somewhere in the destination directory
+///
+/// File name/extension does not matter, and no checking of file contents is done (blind copy)
+/// - File name is always preserved
+/// - Relative files are relative to the currently parsed file
+/// - Absolute files use the specified source directory as the root folder
+/// - Files outside of the source directory and its subdirectories should not be accessed
+/// Usage:
+/// ```YAML
+/// !COPY "relative/file_to_copy"   # destination is relative to current file
+/// !COPY "/absolute/file_to_copy"  # destination is absolute using source dir as root
+/// ```
+pub fn copy(target: Arc<RefCell<PageNode>>, tv: &TaggedValue, dir: Option<PathBuf>) {
+    'valid_copy: {
+        let s = parse_value!(target, &tv.value, dir.clone());
+
+        // canonicalise paths
+        let source = match resolve_input_path(target.clone(), &s, dir.clone()) {
+            Ok(s) => s,
+            Err(e) => {
+                error!(target.borrow().o, "{e}");
+                break 'valid_copy;
+            }
+        };
+
+        let mut dest = target.borrow().o.output.clone();
+        dest.push(
+            match source.clone().strip_prefix(target.borrow().o.input.clone()) {
+                Ok(s) => s,
+                Err(e) => panic!("THIS SHOULDN'T EVER HAPPEN BUT IM TOO SCARED TO UNWRAP IT (strip_prefix of input from source failed)"),
+            },
+        );
+
+        // copy the file
+        info!(
+            target.borrow().o,
+            r#"Copying file "{s}" to "{d}"..."#,
+            s = source.display(),
+            d = dest.display()
+        );
+
+        let mut containing_dir = dest.clone();
+        containing_dir.pop();
+        match fs::create_dir_all(containing_dir.clone()) {
+            Ok(_) => (),
+            Err(e) => {
+                error!(target.borrow().o, "{e}");
+                return; // do not say arguments are invalid if there is just a failure
+            }
+        }
+
+        match fs::copy(source, dest) {
+            Ok(_) => (),
+            Err(e) => {
+                error!(target.borrow().o, "{e}");
+                return;
+            }
+        };
+
+        return;
+    }
+    error!(
+        target.borrow().o,
+        r#"Invalid arguments to !COPY directive: "{}""#,
+        value_tostring(&tv.value)
+    )
 }
 
 /// Include another YAML file inside this page
@@ -84,47 +241,15 @@ pub fn include(target: Arc<RefCell<PageNode>>, tv: &TaggedValue, dir: Option<Pat
     info!(target.borrow().o, "Including file {s}...");
 
     'valid_include: {
-        if s.len() == 0 {
-            break 'valid_include;
-        }
-
         let p = Arc::new(RefCell::new(PageNode::new(target.borrow().o.clone())));
 
-        let mut path = PathBuf::new();
-        if &s[..1] == "/" {
-            // absolute path (root is project root)
-            path.push(target.borrow().o.input.clone());
-            path.push(&s[1..]);
-        } else {
-            // relative path
-            path.push(match dir {
-                Some(d) => d.to_path_buf(),
-                None => target.borrow().o.input.clone(),
-            });
-            path.push(&s[..]);
-        }
-
-        // canonicalise file path
-        let file = match fs::canonicalize(&path) {
+        let file = match resolve_input_path(target.clone(), &s, dir.clone()) {
             Ok(p) => p,
             Err(e) => {
-                error!(
-                    target.borrow().o,
-                    "File at '{path}' undable to canonicalise: '{e}'",
-                    path = &path.display(),
-                );
+                error!(target.borrow().o, "{e}",);
                 break 'valid_include;
             }
         };
-        // ensure target file is a subnode of the input directory
-        if !file.as_path().starts_with(target.borrow().o.input.clone()) {
-            error!(
-                target.borrow().o,
-                "File {f} does not reside in the input directory!",
-                f = file.display()
-            );
-            break 'valid_include;
-        }
 
         // read the file's YAML into a PageNode
         match fs::read_to_string(file.clone()) {
@@ -144,7 +269,7 @@ pub fn include(target: Arc<RefCell<PageNode>>, tv: &TaggedValue, dir: Option<Pat
             Err(e) => {
                 error!(
                     target.borrow().o,
-                    "Error reading file {f} | {e}",
+                    r#"Error reading file "{f}" | {e}"#,
                     f = file.display()
                 );
                 break 'valid_include;
@@ -156,7 +281,7 @@ pub fn include(target: Arc<RefCell<PageNode>>, tv: &TaggedValue, dir: Option<Pat
     }
     error!(
         target.borrow().o,
-        "Invalid arguments to !INCLUDE directive: {}",
+        r#"Invalid arguments to !INCLUDE directive: "{}""#,
         value_tostring(&tv.value)
     )
 }
@@ -180,7 +305,7 @@ pub fn def(target: Arc<RefCell<PageNode>>, tv: &TaggedValue) {
     } else {
         error!(
             target.borrow().o,
-            "Invalid arguments to !DEF directive: {}",
+            r#"Invalid arguments to !DEF directive: "{}""#,
             value_tostring(&tv.value)
         )
     }
@@ -245,7 +370,7 @@ pub fn foreach(target: Arc<RefCell<PageNode>>, tv: &TaggedValue, dir: Option<Pat
     // if fail
     error!(
         target.borrow().o,
-        "Invalid arguments to !FOREACH directive: {}",
+        r#"Invalid arguments to !FOREACH directive: "{}""#,
         if s.len() > 100 {
             format!("{}...", &s[..99])
         } else {
@@ -255,12 +380,14 @@ pub fn foreach(target: Arc<RefCell<PageNode>>, tv: &TaggedValue, dir: Option<Pat
 }
 
 /// Convert a serde_yaml::Value to a String
+///
+/// For use only in debugging or error output, do not include in places where formatting is super important!
 fn value_tostring(val: &Value) -> String {
     return match val {
         Value::Null => "NULL".to_string(),
         Value::Bool(b) => b.to_string(),
         Value::Number(n) => n.to_string(),
-        Value::String(s) => s.to_string(),
+        Value::String(s) => format!(r#""{}""#, s.to_string()),
         Value::Sequence(seq) => {
             format!(
                 "[{}]",
@@ -274,8 +401,8 @@ fn value_tostring(val: &Value) -> String {
             map.iter()
                 .map(|(k, v)| match v {
                     Value::Sequence(_) | Value::Mapping(_) =>
-                        format!(r#""{}":{},"#, value_tostring(k), value_tostring(v)),
-                    _ => format!(r#""{}":"{}","#, value_tostring(k), value_tostring(v)),
+                        format!("{}:{},", value_tostring(k), value_tostring(v)),
+                    _ => format!("{}:{},", value_tostring(k), value_tostring(v)),
                 })
                 .collect::<String>()
         ),
@@ -359,6 +486,84 @@ mod tests {
         assert_eq!(format!("{}", p), "zq<p>text</p>");
     }
 
+    /// Ensure Parser can handle !COPY and follow its directives
+    #[test]
+    fn test_copy() {
+        fs::create_dir_all("/tmp/ssgen_test_source_dir_copy/somedir").unwrap();
+        fs::create_dir_all("/tmp/ssgen_test_dest_dir_copy").unwrap();
+        let o = Arc::new(
+            Args::parse_from([
+                "",
+                "-i",
+                "/tmp/ssgen_test_source_dir_copy",
+                "-o",
+                "/tmp/ssgen_test_dest_dir_copy",
+                "-s",
+            ])
+            .build_options(),
+        );
+
+        // copy a file that does not exist
+        let mut p = Parser::new(o.clone());
+        p.parse_yaml(
+            r#"
+!COPY "/somefilethatdoesnotexist"
+"#,
+        );
+        assert_eq!(
+            PathBuf::from("/tmp/ssgen_test_dest_dir_copy/somefilethatdoesnotexist")
+                .try_exists()
+                .unwrap(),
+            false
+        );
+
+        // copy a file that should not be accessed
+        let mut p = Parser::new(o.clone());
+        let mut out = File::create("/tmp/inaccessible_file.copy").unwrap();
+        out.write_all(b"text").unwrap();
+
+        p.parse_yaml(
+            r#"
+!COPY "//etc/shadow"
+"#,
+        );
+        assert_eq!(
+            PathBuf::from("/tmp/ssgen_test_dest_dir_copy/somefilethatdoesnotexist")
+                .try_exists()
+                .unwrap(),
+            false
+        );
+
+        // copy a file that is valid
+        let mut p = Parser::new(o.clone());
+        let mut out = File::create("/tmp/ssgen_test_source_dir_copy/valid.file").unwrap();
+        out.write_all(b"text").unwrap();
+        let mut out2 = File::create("/tmp/ssgen_test_source_dir_copy/somedir/valid2.file").unwrap();
+        out2.write_all(b"moretext").unwrap();
+        p.parse_yaml(
+            r#"
+- !COPY "/valid.file"
+- !COPY "somedir/valid2.file"
+"#,
+        );
+
+        assert_eq!(
+            PathBuf::from("/tmp/ssgen_test_dest_dir_copy/valid.file")
+                .try_exists()
+                .unwrap(),
+            true
+        );
+        assert_eq!(
+            PathBuf::from("/tmp/ssgen_test_dest_dir_copy/somedir/valid2.file")
+                .try_exists()
+                .unwrap(),
+            true
+        );
+
+        fs::remove_dir_all("/tmp/ssgen_test_source_dir_copy").unwrap();
+        fs::remove_dir_all("/tmp/ssgen_test_dest_dir_copy").unwrap();
+    }
+
     /// Ensure Parser can handle !INCLUDE and follow its directives
     #[test]
     fn test_include() {
@@ -420,6 +625,8 @@ mod tests {
             format!("{}", p),
             "<p>content</p>sep<p>content</p><p>content</p><p>content</p>"
         );
+
+        fs::create_dir_all("/tmp/ssgen_test_source_dir_include").unwrap();
     }
 
     /// Ensure Parser can handle !DEF and follow its directives
@@ -455,15 +662,21 @@ mod tests {
             value_tostring(&Value::Number(Number::from(1234.56))),
             "1234.56"
         );
-        assert_eq!(value_tostring(&Value::String("asdf".to_string())), "asdf");
+        assert_eq!(
+            value_tostring(&Value::String("asdf".to_string())),
+            r#""asdf""#
+        );
 
         // mapping
         let m: Value = serde_yaml::from_str(r#"{a: b, 1: cdefg, h: [i, j, k]}"#).unwrap();
-        assert_eq!(value_tostring(&m), r#"{"a":"b","1":"cdefg","h":[i,j,k,],}"#);
+        assert_eq!(
+            value_tostring(&m),
+            r#"{"a":"b",1:"cdefg","h":["i","j","k",],}"#
+        );
 
         // tagged
-        let t: Value = serde_yaml::from_str(r#"!TAG value"#).unwrap();
-        assert_eq!(value_tostring(&t), "!TAG value");
+        let t: Value = serde_yaml::from_str("!TAG value").unwrap();
+        assert_eq!(value_tostring(&t), r#"!TAG "value""#);
 
         // sequence
         let mut v: Vec<Value> = Vec::new();
@@ -476,7 +689,7 @@ mod tests {
         v.push(t);
         assert_eq!(
             value_tostring(&Value::Sequence(v)),
-            r#"[NULL,123,abc,true,[NULL,123,abc,true,],{"a":"b","1":"cdefg","h":[i,j,k,],},!TAG value,]"#
+            r#"[NULL,123,"abc",true,[NULL,123,"abc",true,],{"a":"b",1:"cdefg","h":["i","j","k",],},!TAG "value",]"#
         );
     }
 }

@@ -66,6 +66,16 @@ impl PageNode {
         };
     }
 
+    /// Override vars variable with a new Hashmap
+    pub fn override_vars(&mut self, new_vars: HashMap<Box<str>, Box<str>>) {
+        self.vars = new_vars;
+    }
+
+    /// Override vars variable with a new Hashmap
+    pub fn consume_into_vars(p: PageNode) -> HashMap<Box<str>, Box<str>> {
+        return p.vars;
+    }
+
     /// Register a variable into this node
     pub fn register_var(&mut self, k: Box<str>, v: Box<str>) {
         let key = self.parse_string(k);
@@ -128,7 +138,7 @@ impl PageNode {
     ///   - Setting content to '{{x}}' is also allowed and will evaluate (where 'x' = 'var', 'var' = '2') to '${var}' then to 'two'
     ///   - Variables can be escaped with '\\{' (literal backslash)
     pub fn parse_string(&self, s: Box<str>) -> Box<str> {
-        const BUFSIZE: usize = 250; // should be divisible by 10
+        const BUFSIZE: usize = 60; // should be divisible by 3
         let mut builder = String::with_capacity(BUFSIZE);
 
         // iterate over chars
@@ -149,7 +159,7 @@ impl PageNode {
                     } else {
                         // start of the variable!!! :D
                         let mut brace_depth: u8 = 0;
-                        let mut var_builder = String::with_capacity(BUFSIZE / 10);
+                        let mut var_builder = String::with_capacity(BUFSIZE / 3);
                         loop {
                             match iter.next() {
                                 Some(x) => c = x,
@@ -265,12 +275,11 @@ mod tests {
     use crate::Args;
     use clap::Parser;
 
-    /// empsure a pagenode can be created and its contents can be accessed as needed
+    /// ensure a pagenode can be created and its contents can be accessed as needed
     #[test]
     fn test_empty() {
         let o = Arc::new(Args::parse_from(["", "-i", "./", "-o", "/tmp/", "-s"]).build_options());
         let p = PageNode::new(o.clone());
-        info!(o, "test log");
         assert_eq!(format!("{}", p), "");
     }
 

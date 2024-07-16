@@ -10,6 +10,7 @@ use serde::Deserialize;
 use serde_yaml::{value::TaggedValue, Deserializer, Mapping, Sequence, Value};
 use std::{
     cell::RefCell,
+    collections::HashMap,
     fmt,
     path::{Path, PathBuf},
     sync::Arc,
@@ -36,7 +37,7 @@ pub struct Parser {
 
 impl Parser {
     /// Create a new, empty Parser
-    pub fn new(o: Arc<Options>) -> Parser {
+    pub fn new(o: Arc<Options>) -> Self {
         debug!(o, "Creating new Parser...");
         return Parser {
             root_node: Arc::new(RefCell::new(PageNode::new(o.clone()))),
@@ -44,6 +45,13 @@ impl Parser {
             o: o,
             root_dir: None,
         };
+    }
+
+    /// Create a new Parser with variables set
+    pub fn new_with_vars(o: Arc<Options>, vars: HashMap<Box<str>, Box<str>>) -> Self {
+        let p = Parser::new(o);
+        p.root_node.borrow_mut().override_vars(vars);
+        return p;
     }
 
     /// Parse a string into the PageNode
@@ -64,6 +72,14 @@ impl Parser {
                 pb.tick();
             }
             None => (),
+        }
+    }
+
+    /// Consume the Parser object and return its root_node
+    pub fn consume_into_root_node(p: Parser) -> PageNode {
+        match Arc::try_unwrap(p.root_node) {
+            Ok(ref_pn) => return ref_pn.into_inner(),
+            Err(e) => panic!("Unlawful consumption of Parser!!"),
         }
     }
 
@@ -170,7 +186,7 @@ impl Parser {
             "!FOREACH" => directives::foreach(target, tv, dir),
             "!INCLUDE" => directives::include(target, tv, dir),
             "!IF" => directives::if_else(target, tv, dir),
-            // "!COPY" => self.directive_copy(tv),
+            "!COPY" => directives::copy(target, tv, dir),
             // no matching directive
             _ => warn!(target.borrow().o, "No matching directive for {tag}"),
         }

@@ -210,7 +210,7 @@ mod tests {
     #[test]
     #[should_panic(expected = "Sanity check fail panic")]
     fn test_arguments() {
-        // different loglevel arguments
+        // different loglevel arguments are just visual tests, commented out after first completion for sanity.
         let _: Options = Args::parse_from(["", "-i", "./", "-o", "/tmp", "-s"]).build_options();
         let _: Options = Args::parse_from(["", "-i", "./", "-o", "/tmp", "-q"]).build_options();
         let _: Options = Args::parse_from(["", "-i", "./", "-o", "/tmp", "-v"]).build_options();
@@ -218,7 +218,14 @@ mod tests {
         let _: Options = Args::parse_from(["", "-i", "./", "-o", "/tmp"]).build_options();
 
         // should fail sanity check
-        let _: Options =
-            Args::parse_from(["", "-i", "/ROOT/NONEXIST", "-o", "/ROOT/NONEXIST"]).build_options();
+        let _: Options = Args::parse_from([
+            "",
+            "--silent",
+            "-i",
+            "/ROOT/NONEXIST",
+            "-o",
+            "/ROOT/NONEXIST",
+        ])
+        .build_options();
     }
 }
