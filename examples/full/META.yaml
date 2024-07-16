@@ -9,7 +9,7 @@
 # (such as copying files)
 
 # define global variables
-- !DEF [TITLE, "SSGen"]
+- !DEF [TITLE, "SSGen2"]
 - !DEF [SUBTITLE, "A [S]tatic [S]ite [Gen]erator written in Rust"]
 - !DEF [DESCRIPTION, 'A fully-featured tutorial page / wiki for SSGen']
 - !DEF [SITE_BASEURL, localhost]

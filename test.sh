@@ -95,7 +95,7 @@ if [[ "$1" == "coverage" ]]; then
     --llvm-path "$(dirname $(which llvm-profdata))" \
     || fail "grcov error!"
 
-  if [[ "$2" != "" ]]; then
+  if [[ "$2" == "open" ]]; then
     echo "Opening report in browser..."
     xdg-open "$OUTPUT_DIR/html/index.html" || fail "xdg-open error!"
   fi
@@ -104,7 +104,18 @@ fi # end coverage
 if [[ "$1" == "profile" ]]; then
   echo "Profiling full example..."
   mkdir -p "$FULL_EXAMPLE_O" || fail "direcory error"
-  samply record -- "$EXECUTABLE" --debug --output "$FULL_EXAMPLE_O/" --input "$FULL_EXAMPLE_IN" || fail "samply/ssgen error!"
+  to_open="--no-open --save-only"
+  if [[ "$2" == "open" ]]; then to_open=""; fi
+
+  samply record $to_open -- "$EXECUTABLE" --debug --output "$FULL_EXAMPLE_O/" --input "$FULL_EXAMPLE_IN" || fail "samply/ssgen error!"
+
+  if [[ "$2" == "open" || "$2" == "opensite" ]]; then
+    echo "Opening example in browser..."
+    (sleep 1; xdg-open "http://localhost:8000") &
+    cd "$FULL_EXAMPLE_O/"
+    python3 -m http.server
+  fi
+
 fi # end profile
 
 echo "Done!"
