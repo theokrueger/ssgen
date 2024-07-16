@@ -25,13 +25,16 @@ html:
           pros:
             p: Pros
             ul:
-              - li: one
-              - li: two
-              - li: three
+              - li: Ultra-fast generation from source
+              - li: Flexible framework allowing many styles of websites
+              - li: Simple templates at the heart of everything
+              - li: Fully leverage any HTML5 feature
+              - li: Encourages highly organised development practises
           cons:
             p: Cons
             ul:
-              - li: one
-              - li: two
-              - li: three
+              - li: Not suitable for dynamic websites
+              - li: Does not support extensions aside from source-modification
+              - li: Does not (yet) support external shell commands
+              - li: Might be too cool for you to use
     - div: !INCLUDE "/features/variables.block"
