@@ -1,0 +1,15 @@
+# Named code block
+#
+# Variables:
+# NAMED_CODE_NAME - What to title the named code block
+# NAMED_CODE_CONTENT - The content to fill the named code block
+#
+# (c) theokrueger 2024
+# GPL-3.0 Licensed
+
+span:
+  pre:
+    - _class: medium-font
+    - code: '{NAMED_CODE_NAME}'
+    - br: ''
+    - code: '{NAMED_CODE_CONTENT}'

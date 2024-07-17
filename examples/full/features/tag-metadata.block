@@ -1,20 +1,20 @@
 # The basics of using SSGen
 # (c) theokrueger 2024
 # GPL-3.0 Licensed
-- !DEF [BLOCKID, variables-and-def]
+- !DEF [BLOCKID, tag-metadata]
 
 ---
 
 - h1:
-    - Variables and !DEF
+    - Tag Metadata
     - _id: '{BLOCKID}'
 - p: >
-    SSGen allows simple variable declaration and substitution.
-    Define a variable using the !DEF directive, and use it with brace substitution.
+    It is pretty important to be able to style your webpage.
+    SSGen allows specifying arbitrary tag metadata through use of underscores.
 
 ---
 
-- p: 'Define and use a variable like so'
+- p: 'Metadata can be specified in HTML Tags like so:'
 
 - span:
     _class: two-column-grid-with-spacer
@@ -23,13 +23,13 @@
       - !DEF
           - NAMED_CODE_CONTENT
           - |
-            \# Syntax: !DEF [name, value]
-            !DEF [content, "Paragraph contents"]
+            \# This is a comment
             html:
               body:
+                _class: someclass
+                _style: 'margin: 5%';
                 h1: Title
-                # Substitute variables into text using {variable_name}
-                p: '{content}'
+                p: Paragraph contents
       - !INCLUDE /blocks/named_code.block
     br: ''
     html:
@@ -38,11 +38,11 @@
           - NAMED_CODE_CONTENT
           - |
             &lt;html&gt;
-             &lt;body&gt;
+             &lt;body class="someclass" style="margin: 5%;"&gt;
               &lt;h1&gt;Title&lt;/h1&gt;
               &lt;p&gt;Paragraph Contents&lt;/p&gt;
              &lt;/body&gt;
             &lt;/html&gt;
       - !INCLUDE /blocks/named_code.block
 
-- p: If starting a string off with a variable substitution
+- p: No input validation is done by SSGen for any tag metadata.

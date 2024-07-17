@@ -1,28 +1,28 @@
 # full SSGen website example
 # (c) theokrueger 2024
 
-# this file acts as the parent to any page that does not itself have a parent,
+# This file acts as the parent to any page that does not itself have a parent,
 # as well as being guaranteed to only be run once.
 # 
-# in essence, it is a global settings file, 
+# In essence, it is a global settings file, 
 # which happens to be the best place to include directives that you only want run once
 # (such as copying files)
+#
+# Note that text defined in this file does not (currently) act as a 'super parent' to anything, only global variables work as of now
 
-# define global variables
-- !DEF [TITLE, "SSGen2"]
+# Define global variables
+- !DEF [TITLE, "SSGen"]
 - !DEF [SUBTITLE, "A [S]tatic [S]ite [Gen]erator written in Rust"]
 - !DEF [DESCRIPTION, 'A fully-featured tutorial page / wiki for SSGen']
 - !DEF [SITE_BASEURL, localhost]
 - !DEF [KEYWORDS, 'HTML,CSS,Rust,SSGen,Static,Site,Generator,Website']
 - !DEF [AUTHOR, theokrueger]
-- !DEF [STYLESHEET, /style.css]
-- !DEF [JSFILE, /script.js]
-- !DEF [FAVICON, /favicon.ico]
+- !DEF [STYLESHEET, /assets/style.css]
+- !DEF [JSFILE, /assets/script.js]
+- !DEF [FAVICON, /assets/favicon.ico]
 
----
-
-# copy some files to root of output_dir
-- !COPY '/style.css'
-- !COPY '/script.js'
-- !COPY '/favicon.ico'
+# Copy some files to root of output directory
+- !COPY '{STYLESHEET}'
+- !COPY '{JSFILE}'
+- !COPY '{FAVICON}'
 - !COPY '/robots.txt'

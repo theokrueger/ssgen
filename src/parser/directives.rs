@@ -263,7 +263,9 @@ pub fn include(target: Arc<RefCell<PageNode>>, tv: &TaggedValue, dir: Option<Pat
                             new_dir.pop();
                             Parser::add_value(p.clone(), &input, Some(new_dir))
                         }
-                        Err(e) => panic!("Error while parsing YAML: {}", e),
+                        Err(e) => {
+                            panic!("Error while parsing YAML: {e} in {f}", f = file.display())
+                        }
                     }
                 }
             }
@@ -300,7 +302,6 @@ pub fn def(target: Arc<RefCell<PageNode>>, tv: &TaggedValue) {
         if s.len() == 2 {
             let kstr = parse_value!(target, &s[0], None);
             let vstr = parse_value!(target, &s[1], None);
-            info!(target.borrow().o, "Registering variable {kstr}...");
             target.borrow_mut().register_var(kstr, vstr);
         }
     } else {

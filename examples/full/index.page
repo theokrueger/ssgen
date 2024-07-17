@@ -1,9 +1,13 @@
 # full SSGen website example
 # (c) theokrueger 2024
+# GPL-3.0 Licensed
 html:
-  - !INCLUDE ./head.block
+  - !INCLUDE /blocks/head.block
+
+# Title
   - body:
     - div:
+        - _id: home
         - span:
             text: '{TITLE}'
             _class: title-font
@@ -13,28 +17,33 @@ html:
             _class: subtitle-font
         - br: ''
         - p:
-            text: JavaScript not enabled!!
-            _id: jsreplace
-            _align: right
+            - 'Witty one-liner goes here'
+            - _id: flavour-text
+            - _align: right
+# Why
     - div:
+        _id: why
         h1: Why?
         p: |
           SSGen is a powerful static site generator that provides a flexible toolset for any type of (static) webpage.
+          SSGen is indended for those looking for highly granular control over their websites templating engine.
         span:
-          _style: "display: grid; grid-template-columns: 50% 50%;"
+          _class: two-column-grid-with-spacer
           pros:
-            p: Pros
+            h2: Pros
             ul:
               - li: Ultra-fast generation from source
-              - li: Flexible framework allowing many styles of websites
-              - li: Simple templates at the heart of everything
-              - li: Fully leverage any HTML5 feature
-              - li: Encourages highly organised development practises
+              - li: Flexible and graunular
+              - li: Based in YAML
+          br: ''
           cons:
-            p: Cons
+            h2: Cons
             ul:
               - li: Not suitable for dynamic websites
-              - li: Does not support extensions aside from source-modification
-              - li: Does not (yet) support external shell commands
-              - li: Might be too cool for you to use
-    - div: !INCLUDE "/features/variables.block"
+              - li: Barely abstracted from HTML
+              - li: Based in YAML
+
+# Features
+    - div: !INCLUDE '/features/basics.block'
+    - div: !INCLUDE '/features/tag-metadata.block'
+    - div: !INCLUDE '/features/variables.block'

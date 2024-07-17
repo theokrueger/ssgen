@@ -1,14 +1,16 @@
-# head block containing metadata and js/css
+# Head block containing metadata and js/css
 #
-# optional variables:
+# Optional variables:
 # AUTHOR - Author of the website or page on website
 # KEYWORDS - Keywords for SEO
 # TITLE - Title of the page or site title
 # DESCRIPTION - Description of the site or page
-# STYLESHEET - a .css file to include in the page. absolute paths or links preferred.
-# JSFILE - a .js file to include in the page. absolute paths or links prefrered.
-# FAVICON - a .ico file to include as the page's favicon. absolute paths preferred
-
+# STYLESHEET - A .css file to include in the page. absolute paths or links preferred.
+# JSFILE - A .js file to include in the page. absolute paths or links prefrered.
+# FAVICON - An .ico file to include as the page's favicon. absolute paths or links preferred
+#
+# (c) theokrueger 2024
+# GPL-3.0 Licensed
 head:
   - !FOREACH [
       [x],
@@ -36,7 +38,7 @@ head:
       _type: 'text/javascript',
       _src: '{JSFILE}',
       _defer: '',
-      # this is a hack due to the weirdness of defer tag
+      # this is a (nonessential) hack due to the weirdness of defer tag
       ' ',
     ]
   ]

@@ -1,20 +1,27 @@
 # The basics of using SSGen
 # (c) theokrueger 2024
 # GPL-3.0 Licensed
-- !DEF [BLOCKID, variables-and-def]
+- !DEF [BLOCKID, the-basics]
 
 ---
-
+# Intro
 - h1:
-    - Variables and !DEF
+    - The Basics
     - _id: '{BLOCKID}'
+
+- p: SSGen aims to be as simple as possible.
 - p: >
-    SSGen allows simple variable declaration and substitution.
-    Define a variable using the !DEF directive, and use it with brace substitution.
+    Page files are written in YAML, with the .page extension.
+    Each Page file gets converted into exactly one HTML file.
+    This short tutorial assumes you have a basic understanding of YAML.
+- p: If you are farmiliar with YAML, you are farmiliar with SSGen and Pages.
 
 ---
-
-- p: 'Define and use a variable like so'
+# Basic demonstartion
+- h2:
+  - Simple Demonstration
+  - _id: '{BLOCKID}-simple-demonstration'
+- p: Take a look at the following example for how YAML gets converted into a Page
 
 - span:
     _class: two-column-grid-with-spacer
@@ -23,13 +30,11 @@
       - !DEF
           - NAMED_CODE_CONTENT
           - |
-            \# Syntax: !DEF [name, value]
-            !DEF [content, "Paragraph contents"]
+            \# This is a comment
             html:
               body:
                 h1: Title
-                # Substitute variables into text using {variable_name}
-                p: '{content}'
+                p: Paragraph contents
       - !INCLUDE /blocks/named_code.block
     br: ''
     html:
@@ -45,4 +50,4 @@
             &lt;/html&gt;
       - !INCLUDE /blocks/named_code.block
 
-- p: If starting a string off with a variable substitution
+- p: It really couldn't be simpler!
