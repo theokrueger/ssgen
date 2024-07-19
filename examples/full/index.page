@@ -4,46 +4,57 @@
 html:
   - !INCLUDE /blocks/head.block
 
-# Title
   - body:
-    - div:
-        - _id: home
-        - span:
-            text: '{TITLE}'
-            _class: title-font
-        - br: ''
-        - span:
-            text: '{SUBTITLE}'
-            _class: subtitle-font
-        - br: ''
-        - p:
-            - 'Witty one-liner goes here'
-            - _id: flavour-text
-            - _align: right
-# Why
-    - div:
-        _id: why
-        h1: Why?
-        p: |
-          SSGen is a powerful static site generator that provides a flexible toolset for any type of (static) webpage.
-          SSGen is indended for those looking for highly granular control over their websites templating engine.
-        span:
-          _class: two-column-grid-with-spacer
-          pros:
-            h2: Pros
-            ul:
-              - li: Ultra-fast generation from source
-              - li: Flexible and graunular
-              - li: Based in YAML
+      # Title
+      - content:
+          - div:
+              - _id: title
+              - !INCLUDE '/content/title.block'
+          - div:
+              - _id: why
+              - !INCLUDE '/content/why.block'
+      # Sidebar / TOC
+      - nav:
+          - a:
+              _href: '#title'
+              c: 'Home'
+              l: '-- Home'
+          - a:
+              _href: '#why'
+              c: 'Why?'
+              l: '0. Why?'
+          - a:
+              _href: '#the-basics'
+              c: 'Basics'
+              l: '1. The Basics'
+          - a:
+              _href: '#tag-metadata'
+              c: 'Tags'
+              l: '2. Tag Metadata'
+          - a:
+              _href: '#variables-and-def'
+              c: '!DEF'
+              l: '3. Variables and !DEF'
+      # Content
+      - content:
+          - div:
+              - _id: the-basics
+              - !INCLUDE '/content/basics.block'
+          - div:
+              - _id: tag-metadata
+              - !INCLUDE '/content/tag-metadata.block'
+          - div:
+              - _id: variables-and-def
+              - !INCLUDE '/content/variables-and-def.block'
+        # Footer
+      - footer:
+          c:
+            _class: rotate-90
+            t: ©
+          t: theokrueger
           br: ''
-          cons:
-            h2: Cons
-            ul:
-              - li: Not suitable for dynamic websites
-              - li: Barely abstracted from HTML
-              - li: Based in YAML
-
-# Features
-    - div: !INCLUDE '/features/basics.block'
-    - div: !INCLUDE '/features/tag-metadata.block'
-    - div: !INCLUDE '/features/variables.block'
+          a:
+            _class: nodecorate
+            _href: '{SOURCE}'
+            _target: '_blank'
+            t: Source

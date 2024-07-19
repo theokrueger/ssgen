@@ -1,0 +1,56 @@
+# The basics of using SSGen
+# (c) theokrueger 2024
+# GPL-3.0 Licensed
+
+# Intro
+- h1: Variables and !DEF
+- p: >
+    SSGen allows simple variable declaration and substitution.
+    Define a variable using the <code>!DEF</code> directive, and use it with brace substitution.
+- p: >
+    Variables can only be used by the scope which they were declared, or a child of said scope.
+    If a variable of the same name as another is declared in a different scope, the most recently declared version of it will be the current value.
+    Once the scope is left and the newer declaration is released, the older declaration will become the current value.
+- p: >
+    In other words: Variables are scope-bounded, unlike the lexical binding in many programming languages.
+    You will find using them very intuitive.
+---
+# Example
+- p: 'Define and use a variable like so'
+
+- span:
+    _class: two-column-grid-with-spacer
+    yaml:
+      - !DEF [NAMED_CODE_NAME, "<i>input_directory</i>/index.page"]
+      - !DEF
+          - NAMED_CODE_CONTENT
+          - |
+            \# Syntax: !DEF [name, value]
+            !DEF [content, "Paragraph contents"]
+            html:
+              body:
+                h1: Title
+                # Substitute variables into text using {variable_name}
+                p: '\\\{content}'
+      - !INCLUDE /blocks/named-code.block
+    br: ''
+    html:
+      - !DEF [NAMED_CODE_NAME, "<i>output_directory</i>/index.html"]
+      - !DEF
+          - NAMED_CODE_CONTENT
+          - |
+            &lt;html&gt;
+             &lt;body&gt;
+              &lt;h1&gt;Title&lt;/h1&gt;
+              &lt;p&gt;Paragraph Contents&lt;/p&gt;
+             &lt;/body&gt;
+            &lt;/html&gt;
+      - !INCLUDE /blocks/named-code.block
+
+# Clarification
+- p: If starting a string off with a variable substitution, the string should be single or double quoted.
+- p:
+  - 'Similarly, braces can be escaped by using a backslash: '
+  - code: 'p: "\\\{escaped}"'
+  - ' becomes '
+  - code: '&lt;p&gt;\{escaped}&lt;/p&gt;'

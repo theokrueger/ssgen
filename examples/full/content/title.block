@@ -1,0 +1,17 @@
+# SSGen title block
+# (c) theokrueger 2024
+# GPL-3.0 Licensed
+- span:
+    text: '{TITLE}'
+    _class: title-font
+
+- br: ''
+- span:
+    text: '{SUBTITLE}'
+    _class: subtitle-font
+
+- br: ''
+- p:
+    - 'Witty one-liner goes here'
+    - _id: flavour-text
+    - _align: right

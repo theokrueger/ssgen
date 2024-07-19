@@ -13,7 +13,10 @@ const flavourTexts = [
 	"For web undesigners",
 	"Its hardly different from HTML!",
 	":D",
-	"Does not install Adobe Reader for you",
+	"Will not install Adobe Reader",
+	"Documentation?? In this economy???",
+	"Technically could just output XML",
+	"THE YAML CAML SPITS TOWARDS US ALL",
 ];
 
 document.getElementById('flavour-text').innerHTML = flavourTexts[Math.floor(Math.random() * flavourTexts.length)];

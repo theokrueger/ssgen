@@ -1,13 +1,9 @@
 # The basics of using SSGen
 # (c) theokrueger 2024
 # GPL-3.0 Licensed
-- !DEF [BLOCKID, the-basics]
 
----
 # Intro
-- h1:
-    - The Basics
-    - _id: '{BLOCKID}'
+- h1: The Basics
 
 - p: SSGen aims to be as simple as possible.
 - p: >
@@ -17,10 +13,8 @@
 - p: If you are farmiliar with YAML, you are farmiliar with SSGen and Pages.
 
 ---
-# Basic demonstartion
-- h2:
-  - Simple Demonstration
-  - _id: '{BLOCKID}-simple-demonstration'
+# Example
+- h2: Simple Demonstration
 - p: Take a look at the following example for how YAML gets converted into a Page
 
 - span:
@@ -35,7 +29,7 @@
               body:
                 h1: Title
                 p: Paragraph contents
-      - !INCLUDE /blocks/named_code.block
+      - !INCLUDE /blocks/named-code.block
     br: ''
     html:
       - !DEF [NAMED_CODE_NAME, "<i>output_directory</i>/index.html"]
@@ -48,6 +42,7 @@
               &lt;p&gt;Paragraph Contents&lt;/p&gt;
              &lt;/body&gt;
             &lt;/html&gt;
-      - !INCLUDE /blocks/named_code.block
+      - !INCLUDE /blocks/named-code.block
 
+# Clarification
 - p: It really couldn't be simpler!

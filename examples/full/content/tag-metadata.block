@@ -1,19 +1,15 @@
 # The basics of using SSGen
 # (c) theokrueger 2024
 # GPL-3.0 Licensed
-- !DEF [BLOCKID, tag-metadata]
+
+# Intro
+h1: Tag Metadata
+p: >
+  It is pretty important to be able to style your webpage.
+  SSGen allows specifying arbitrary tag metadata through use of underscores.
 
 ---
-
-- h1:
-    - Tag Metadata
-    - _id: '{BLOCKID}'
-- p: >
-    It is pretty important to be able to style your webpage.
-    SSGen allows specifying arbitrary tag metadata through use of underscores.
-
----
-
+# Example
 - p: 'Metadata can be specified in HTML Tags like so:'
 
 - span:
@@ -30,8 +26,8 @@
                 _style: 'margin: 5%';
                 h1: Title
                 p: Paragraph contents
-      - !INCLUDE /blocks/named_code.block
-    br: ''
+      - !INCLUDE /blocks/named-code.block
+    br: '' 
     html:
       - !DEF [NAMED_CODE_NAME, "<i>output_directory</i>/index.html"]
       - !DEF
@@ -43,6 +39,7 @@
               &lt;p&gt;Paragraph Contents&lt;/p&gt;
              &lt;/body&gt;
             &lt;/html&gt;
-      - !INCLUDE /blocks/named_code.block
+      - !INCLUDE /blocks/named-code.block
 
+# Clarification
 - p: No input validation is done by SSGen for any tag metadata.

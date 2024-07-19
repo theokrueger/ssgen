@@ -7,9 +7,9 @@
 # (c) theokrueger 2024
 # GPL-3.0 Licensed
 
-span:
+named-code-block:
   pre:
     - _class: medium-font
     - code: '{NAMED_CODE_NAME}'
-    - br: ''
+    - hr: ''
     - code: '{NAMED_CODE_CONTENT}'
