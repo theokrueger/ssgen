@@ -1,11 +1,22 @@
 # SSGen
+A \[S\]tatic \[S\]ite \[Gen\]erator written in Rust
 
-A complex and flexible website builder written in Rust.
+## Installation
 
-## documentation
+Install from [crates.io](https://crates.io/crates/ssgen)
+
+```sh
+$ cargo install ssgen
+```
+
+## How to use
 
 View documentation at https://ssgen.theokrueger.dev/
 
-## examples
+## Example webpage
 
-View examples in `examples/`
+View examples in [`examples/`](https://gitlab.com/theokrueger/ssgen/-/tree/master/examples)
+
+## Credits
+
+Made by [theokrueger](https://theokrueger.dev)
