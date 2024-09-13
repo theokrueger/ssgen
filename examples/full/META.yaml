@@ -14,7 +14,7 @@
 - !DEF [TITLE, 'SSGen']
 - !DEF [SUBTITLE, 'A [S]tatic [S]ite [Gen]erator written in Rust']
 - !DEF [DESCRIPTION, 'A fully-featured tutorial page / wiki for SSGen']
-- !DEF [SITE_BASEURL, localhost]
+- !DEF [SITE_BASEURL, 'https://ssgen.theokrueger.dev']
 - !DEF [KEYWORDS, 'HTML,CSS,Rust,SSGen,Static,Site,Generator,Website']
 - !DEF [AUTHOR, theokrueger]
 - !DEF [STYLESHEET, /assets/style.css]

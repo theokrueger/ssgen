@@ -29,14 +29,14 @@ head:
     link: {
       _rel: 'stylesheet',
       _type: 'text/css',
-      _href: '{STYLESHEET}',
+      _href: '{SITE_BASEURL}{STYLESHEET}',
     }
   ]
   # .js file
   - !IF ['{JSFILE}',
     script: [
       _type: 'text/javascript',
-      _src: '{JSFILE}',
+      _src: '{SITE_BASEURL}{JSFILE}',
       _defer: '',
       # this is a (nonessential) hack due to the weirdness of defer tag
       ' ',
@@ -47,6 +47,6 @@ head:
     link: {
       _rel: 'icon',
       _type: 'image/x-icon',
-      _href: '{FAVICON}',
+      _href: '{SITE_BASEURL}{FAVICON}',
     }
   ]
