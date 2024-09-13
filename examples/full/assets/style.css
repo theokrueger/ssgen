@@ -191,8 +191,7 @@ footer {
         margin-left: var(--default-margin);
     }
     nav, footer {
-        max-width: calc(100% - var(--default-margin)*2 - var(--default-padding)*2 - 0.5%);
-        width: calc(100% - var(--default-margin)*2 - var(--default-padding)*2 - 0.5%);
+        max-width: calc(100% - var(--default-margin)*2 - var(--default-padding)*2 - 1%);
         height: auto;
         position: relative;
         margin: var(--default-margin);
