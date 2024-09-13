@@ -1,17 +1,23 @@
-# The Docker image that will be used to build your app
-image: rust
-# Functions that should be executed before the build script is run
-before_script:
-  - mkdir -p 'public'
-pages:
+stages:
+  - build
+  - deploy
+
+rust-latest:
+  stage: build
+  image: rust:latest
   script:
-    - cargo build
-    - cargo run -- --output 'public' --input 'examples/full/'
+    - cargo build --verbose
+    - cargo test --verbose
+
+pages:
+  stage: deploy
+  image: rust:latest
+  before_script:
+    - mkdir -p 'public'
+  script:
+    - cargo run -- --verbose --output 'public' --input 'examples/full/'
   artifacts:
     paths:
-      # The folder that contains the files to be exposed at the Page URL
       - public
   rules:
-    # This ensures that only pushes to the default branch will trigger
-    # a pages deploy
-    - if: $CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH
+  - if: $CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH
