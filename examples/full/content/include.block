@@ -23,11 +23,9 @@
       - !DEF
           - NAMED_CODE_CONTENT
           - |
-            \# This is a comment
+            \# Syntax: !INCLUDE path/to/file
             html:
               body:
-                - _class: someclass
-                - _style: 'margin: 5%';
                 - h1: Title
                 - !INCLUDE "include/sample.block"
                 - !INCLUDE_RAW "/include/sample.block"
@@ -39,7 +37,7 @@
           - NAMED_CODE_CONTENT
           - |
             &lt;html&gt;
-             &lt;body class="someclass" style="margin: 5%;"&gt;
+             &lt;body&gt;
               &lt;h1&gt;Title&lt;/h1&gt;
               &lt;p&gt;Paragraph Contents&lt;/p&gt;
               p: Paragraph Content

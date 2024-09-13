@@ -38,7 +38,19 @@ html:
           - a:
               _href: '#include'
               c: '!INCLUDE'
-              l: '3. !INCLUDE other files'
+              l: '4. !INCLUDE other files'
+          - a:
+              _href: '#foreach'
+              c: 'Loops'
+              l: '5. Loop using !FOREACH'
+          - a:
+              _href: '#conditionals'
+              c: 'Conditionals'
+              l: '6. Conditionals using !IF'
+          - a:
+              _href: '#special-files'
+              c: 'META.yaml'
+              l: '7. The special META.yaml'
       # Content
       - content:
           - div:
@@ -53,6 +65,15 @@ html:
           - div:
               - _id: include
               - !INCLUDE '/content/include.block'
+          - div:
+              - _id: foreach
+              - !INCLUDE '/content/foreach.block'
+          - div:
+              - _id: conditionals
+              - !INCLUDE '/content/conditionals.block'
+          - div:
+              - _id: special-files
+              - !INCLUDE '/content/special-files.block'
         # Footer
       - footer:
           c:

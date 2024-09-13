@@ -75,12 +75,12 @@ if [[ "$1" == "coverage" ]]; then
     --object $TEST_BIN \
   "
 
-  echo "Showing coverage..."
-  llvm-cov show \
-    $LLVM_COV_ARGS \
-    --show-instantiations --show-line-counts-or-regions \
-    --Xdemangler=rust-demangler \
-    || fail "llvm-cov show error!"
+  #echo "Showing coverage..."
+  #llvm-cov show \
+  #  $LLVM_COV_ARGS \
+  #  --show-instantiations --show-line-counts-or-regions \
+  #  --Xdemangler=rust-demangler \
+  #  || fail "llvm-cov show error!"
 
   echo "Creating report..."
   llvm-cov report $LLVM_COV_ARGS || fail "llvm-cov report error!"

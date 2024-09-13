@@ -1,0 +1,30 @@
+# The basics of using SSGen
+# (c) theokrueger 2024
+# GPL-3.0 Licensed
+
+# Intro
+- h1: 'Special file: META.yaml'
+- p: >
+    <code>META.yaml</code> is an optional file that exists (or doesn't) in the root of your source directory.
+    It is evaluated like any other <code>.page</code> file, but exists as the parent to any non-included <code>.page</code> file.
+- p: >
+    It is also guaranteed to only be evaluated once, and as such is most suited for the <code>!COPY</code> directive.
+    The <code>!COPY</code> directive is useful to copy assets from the source directory to the output directory.
+
+---
+# Example
+span:
+  - !DEF [NAMED_CODE_NAME, "<i>input_directory</i>/META.yaml"]
+  - !DEF
+    - NAMED_CODE_CONTENT
+    - |
+      \# Define some global variables
+      - !DEF [GLOBAL, some_value]
+      - !DEF [ANOTHER_GLOBAL, some_other_value]
+      \# Copy some files to the same location in the output directory
+      \# Syntax: !COPY "file_to_copy"
+      - !COPY "somefile.txt"
+  - !INCLUDE /blocks/named-code.block
+
+# Clarification
+p: This file is incredibly useful, and you can view a full example of it in action in the <a href="{SOURCE}/-/blob/master/examples/full/META.yaml">source to this webpage</a>

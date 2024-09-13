@@ -1,0 +1,47 @@
+# The basics of using SSGen
+# (c) theokrueger 2024
+# GPL-3.0 Licensed
+
+# Intro
+h1: Conditionals using !IF
+p: >
+  SSGen allows evaluating conditional statements to choose whether to include something, or to not.
+  Currently, no arithmetic can be performed, therefore the <code>!IF</code> statement only evaluates if the input is blank or not.
+
+---
+# Example
+- p: 'Conditionals can be used like so:'
+
+- span:
+    _class: two-column-grid-with-spacer
+    yaml:
+      - !DEF [NAMED_CODE_NAME, "<i>input_directory</i>/index.page"]
+      - !DEF
+          - NAMED_CODE_CONTENT
+          - |
+            \# Syntax: !IF ['string', 'exec if true', '?exec if false']
+            \# Where "?exec" is optional
+            html:
+              body:
+                - !DEF ["var", "notempty"]
+                - h1: Title
+                - p: !IF ["\\\{var}", "Paragraph contents"]
+                - p: !IF ["\\\{undeclared_var}", "True", "False"];
+      - !INCLUDE /blocks/named-code.block
+    br: ''
+    html:
+      - !DEF [NAMED_CODE_NAME, "<i>output_directory</i>/index.html"]
+      - !DEF
+          - NAMED_CODE_CONTENT
+          - |
+            &lt;html&gt;
+             &lt;body&gt;
+              &lt;h1&gt;Title&lt;/h1&gt;
+              &lt;p&gt;Paragraph Contents&lt;/p&gt;
+              &lt;p&gt;False&lt;/p&gt;
+             &lt;/body&gt;
+            &lt;/html&gt;
+      - !INCLUDE /blocks/named-code.block
+
+# Clarification
+- p: As a reminder, SSGen only checks if the first entry in the <code>!IF</code> statement is blank or not. You cannot do arithmetic currently.

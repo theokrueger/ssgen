@@ -1,0 +1,55 @@
+# The basics of using SSGen
+# (c) theokrueger 2024
+# GPL-3.0 Licensed
+
+# Intro
+h1: Looping with !FOREACH
+p: >
+  Simple looping can be done using the <code>!FOREACH</code> directive.
+  This is useful for managing complexity.
+
+---
+# Example
+- p: 'Create loops like so:'
+
+- span:
+    _class: two-column-grid-with-spacer
+    yaml:
+      - !DEF [NAMED_CODE_NAME, "<i>input_directory</i>/index.page"]
+      - !DEF
+          - NAMED_CODE_CONTENT
+          - |
+            \# Syntax: !FOREACH [
+            \#           [x, y, (...), n],
+            \#           "\\\{x} \\\{y} (...) \\\{n}",
+            \#           [xval1, yval1, (...), nval1],
+            \#           [xval2, yval2, (...), nval2],
+            \#           (...),
+            \#         ]
+            html:
+              body:
+                - h1: Title
+                - !FOREACH [
+                    [x],
+                    '&lt;p&gt;\\\{x}&lt;/p&gt;'
+                    ['Content A'],
+                    ['Content B'],
+                  ]
+      - !INCLUDE /blocks/named-code.block
+    br: ''
+    html:
+      - !DEF [NAMED_CODE_NAME, "<i>output_directory</i>/index.html"]
+      - !DEF
+          - NAMED_CODE_CONTENT
+          - |
+            &lt;html&gt;
+             &lt;body&gt;
+              &lt;h1&gt;Title&lt;/h1&gt;
+              &lt;p&gt;Content A&lt;/p&gt;
+              &lt;p&gt;Content B&lt;/p&gt;
+             &lt;/body&gt;
+            &lt;/html&gt;
+      - !INCLUDE /blocks/named-code.block
+
+# Clarification
+- p: Obviously, this isn't that useful on its own, but all SSGen features can be used with eachother, allowing for <code>!FOREACH</code> to be at the heart of your templates.

@@ -19,7 +19,6 @@ p: >
       - !DEF
           - NAMED_CODE_CONTENT
           - |
-            \# This is a comment
             html:
               body:
                 _class: someclass

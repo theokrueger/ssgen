@@ -324,7 +324,7 @@ pub fn def(target: Arc<RefCell<PageNode>>, tv: &TaggedValue) {
 /// ```YAML
 /// !FOREACH [
 ///   [x, y, ..., n],              # Variable names for use in template
-///   "${x} ${y} ${n}",            # Template for values to be inserted into
+///   "{x} {y} (...) {n}",            # Template for values to be inserted into
 ///   [xval, yval, ..., nval],     # One set of values to insert into the template
 ///   [xval2, yval2, ..., zval2],  # Another set of values
 /// ]

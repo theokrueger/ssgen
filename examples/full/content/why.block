@@ -13,6 +13,7 @@ span:
     ul:
       - li: Ultra-fast generation from source
       - li: Flexible and granular
+      - li: (Actually) human-readable
       - li: Based in YAML
   br: ''
   cons:
