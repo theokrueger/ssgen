@@ -5,18 +5,20 @@
 
 console.log('javascript enabled for this webpage');
 
-/* Replace the falvour text with a random selection */
+/* Replace the flavour text with a random selection */
 const flavourTexts = [
 	"Now with 50% more website for your website!",
 	"No better price than free!",
 	"GPL3-Pilled Libremaxxing",
 	"For web undesigners",
-	"Its hardly different from HTML!",
+	"It's hardly different from HTML!",
 	":D",
 	"Will not install Adobe Reader",
 	"Documentation?? In this economy???",
-	"Technically could just output XML",
-	"THE YAML CAML SPITS TOWARDS US ALL",
+	"A project with little purpose",
+        "THE YAML CAML SPITS TOWARDS US ALL",
+        "Made like a force-buy on round 2",
+        "Does'nt come with spellcehck",
 ];
 
 document.getElementById('flavour-text').innerHTML = flavourTexts[Math.floor(Math.random() * flavourTexts.length)];

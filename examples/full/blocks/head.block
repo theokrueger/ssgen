@@ -6,7 +6,7 @@
 # TITLE - Title of the page or site title
 # DESCRIPTION - Description of the site or page
 # STYLESHEET - A .css file to include in the page. absolute paths or links preferred.
-# JSFILE - A .js file to include in the page. absolute paths or links prefrered.
+# JSFILE - A .js file to include in the page. absolute paths or links preferred.
 # FAVICON - An .ico file to include as the page's favicon. absolute paths or links preferred
 #
 # (c) theokrueger 2024

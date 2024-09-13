@@ -19,5 +19,5 @@ slog-async = "2.8"
 opt-level = 3
 strip = true
 debug = false
-pacic = "abort"
+panic = "abort"
 lto = true

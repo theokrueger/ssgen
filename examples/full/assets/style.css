@@ -8,12 +8,12 @@
     --border-width: 2px;
     --border-style: solid;
 
-    --default-margin: 2%;
+    --default-margin: 1%;
     --default-padding: 2%;
 
     --text-color: black;
 
-    --tint-color: #00000010;
+    --tint-color: #00000015;
 
     --sidebar-size: 10vw;
 }
@@ -98,7 +98,14 @@ code::-webkit-scrollbar {
 /* END grids */
 
 /* START components */
+named-code-block {
+}
 named-code-block > pre {
+    padding: var(--default-padding);
+    border-color: var(--border-color);
+    border-style: var(--border-style);
+    border-width: var(--border-width);
+    border-radius: var(--border-radius);
     background-color: var(--tint-color);
 }
 named-code-block > pre > code {
@@ -152,7 +159,7 @@ footer {
 @media only screen and (max-width: 800px) {
     /* START mobile fonts */
     .title-font {
-        font-size: 2.5em; 
+        font-size: 2.5em;
     }
     .subtitle-font {
         font-size: 1.5em;
@@ -170,7 +177,7 @@ footer {
         font-size: 1em;
     }
     /* END mobile fonts */
-    
+
     /* START mobile grids */
     .two-column-grid-with-spacer {
         /* Two columns on desktop become one column on mobile */

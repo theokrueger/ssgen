@@ -1,10 +1,10 @@
-# full SSGen website example
+# Full SSGen website example
 # (c) theokrueger 2024
 
 # This file acts as the parent to any page that does not itself have a parent,
 # as well as being guaranteed to only be run once.
-# 
-# In essence, it is a global settings file, 
+#
+# In essence, it is a global settings file,
 # which happens to be the best place to include directives that you only want run once
 # (such as copying files)
 #

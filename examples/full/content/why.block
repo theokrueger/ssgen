@@ -1,17 +1,18 @@
-# Rationale block
+# Rationale block for SSGen
 # (c) theokrueger 2024
 # GPL-3.0 Licensed
+
 h1: Why?
 p: |
-  SSGen is a powerful static site generator that provides a flexible toolset for any type of (static) webpage.
-  SSGen is indended for those looking for highly granular control over their websites templating engine.
+  SSGen is a powerful static site generator that provides a flexible tool-set for any type of (static) webpage.
+  It is intended for those looking for highly granular control over their websites.
 span:
   _class: two-column-grid-with-spacer
   pros:
     h2: Pros
     ul:
       - li: Ultra-fast generation from source
-      - li: Flexible and graunular
+      - li: Flexible and granular
       - li: Based in YAML
   br: ''
   cons:

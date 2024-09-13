@@ -27,7 +27,7 @@ p: >
                 h1: Title
                 p: Paragraph contents
       - !INCLUDE /blocks/named-code.block
-    br: '' 
+    br: ''
     html:
       - !DEF [NAMED_CODE_NAME, "<i>output_directory</i>/index.html"]
       - !DEF
@@ -42,4 +42,4 @@ p: >
       - !INCLUDE /blocks/named-code.block
 
 # Clarification
-- p: No input validation is done by SSGen for any tag metadata.
+- p: No input validation is performed by SSGen for any tag metadata. This means you can define and use any custom tag metadata, albeit to limited functionality.

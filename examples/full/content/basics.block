@@ -7,10 +7,10 @@
 
 - p: SSGen aims to be as simple as possible.
 - p: >
-    Page files are written in YAML, with the .page extension.
+    Page files are written in YAML, with the <code>.page</code> extension.
     Each Page file gets converted into exactly one HTML file.
     This short tutorial assumes you have a basic understanding of YAML.
-- p: If you are farmiliar with YAML, you are farmiliar with SSGen and Pages.
+- p: If you are familiar with YAML, you are familiar with SSGen and Pages.
 
 ---
 # Example

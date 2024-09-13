@@ -119,6 +119,11 @@ impl PageNode {
         self.content += &self.parse_string(s.into());
     }
 
+    /// Set content of node, taking ownership of passed text
+    pub fn add_content_unparsed(&mut self, s: Box<str>) {
+        self.content += &s;
+    }
+
     /// Set parent of node, taking ownership of passed Arc
     pub fn set_parent(&mut self, p: Arc<RefCell<PageNode>>) {
         self.parent = Some(p.clone());

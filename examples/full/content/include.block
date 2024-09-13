@@ -1,0 +1,51 @@
+# The !INCLUDE directive
+# (c) theokrueger 2024
+# GPL-3.0 Licensed
+
+# Intro
+- h1: '!INCLUDE other files'
+- p: >
+    SSGen allows you to directly paste the contents of other files wherever you want.
+    This is useful for breaking down large pages into smaller chunks, or for creating templates.
+- p: >
+    Since included files inherit the variables of their parent, you can also declare variables outside of a file, and use them inside the included file.
+    You can see how this is done in practise by viewing the <a href="{SOURCE}/-/tree/master/examples/example_full">source code</a> for this website
+
+---
+# Example
+- p: 'Files can be included like so:'
+- p: '(Assuming the contents of <code>sample.block</code> is <code>p: Paragraph content</code>)'
+
+- span:
+    _class: two-column-grid-with-spacer
+    yaml:
+      - !DEF [NAMED_CODE_NAME, "<i>input_directory</i>/index.page"]
+      - !DEF
+          - NAMED_CODE_CONTENT
+          - |
+            \# This is a comment
+            html:
+              body:
+                - _class: someclass
+                - _style: 'margin: 5%';
+                - h1: Title
+                - !INCLUDE "include/sample.block"
+                - !INCLUDE_RAW "/include/sample.block"
+      - !INCLUDE /blocks/named-code.block
+    br: ''
+    html:
+      - !DEF [NAMED_CODE_NAME, "<i>output_directory</i>/index.html"]
+      - !DEF
+          - NAMED_CODE_CONTENT
+          - |
+            &lt;html&gt;
+             &lt;body class="someclass" style="margin: 5%;"&gt;
+              &lt;h1&gt;Title&lt;/h1&gt;
+              &lt;p&gt;Paragraph Contents&lt;/p&gt;
+              p: Paragraph Content
+             &lt;/body&gt;
+            &lt;/html&gt;
+      - !INCLUDE /blocks/named-code.block
+
+# Clarification
+- p: Ensure that any provided path is not only an actual path to a file, but that the file does not exist outside of the source directory, and will not create an infinite loop of inclusion.

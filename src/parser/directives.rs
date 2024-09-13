@@ -225,19 +225,20 @@ pub fn copy(target: Arc<RefCell<PageNode>>, tv: &TaggedValue, dir: Option<PathBu
     )
 }
 
-/// Include another YAML file inside this page
+/// Include another text or YAML file inside this page
 ///
-/// File name/extension does not matter, it is on the user to ensure it is a properly formatted YAML file
+/// File name/extension does not matter, it is on the user to ensure it is a properly formatted YAML file (if not using !INCLUDE_RAW)
 /// - Relative files are relative to the currently parsed file
 /// - Absolute files use the specified source directory as the root folder
 /// - Files outside of the source directory and its subdirectories should not be accessed
 /// Usage:
 /// ```YAML
 /// !INCLUDE relative/file_to_include.page
-/// !INCLUDE /absolute/file_to_include.page
+/// !INCLUDE_RAW /absolute/file_to_include.page
 /// ```
 pub fn include(target: Arc<RefCell<PageNode>>, tv: &TaggedValue, dir: Option<PathBuf>) {
     let s = parse_value!(target, &tv.value, dir.clone());
+    let is_raw: bool = tv.tag == "!INCLUDE_RAW";
     info!(target.borrow().o, "Including file {s}...");
 
     'valid_include: {
@@ -254,17 +255,21 @@ pub fn include(target: Arc<RefCell<PageNode>>, tv: &TaggedValue, dir: Option<Pat
 
         // read the file's YAML into a PageNode
         match fs::read_to_string(file.clone()) {
-            Ok(yaml) => {
-                for doc in Deserializer::from_str(yaml.as_str()) {
-                    match Value::deserialize(doc) {
-                        Ok(input) => {
-                            // swap current file directory
-                            let mut new_dir = file.clone();
-                            new_dir.pop();
-                            Parser::add_value(p.clone(), &input, Some(new_dir))
-                        }
-                        Err(e) => {
-                            panic!("Error while parsing YAML: {e} in {f}", f = file.display())
+            Ok(data) => {
+                if is_raw {
+                    p.borrow_mut().add_content_unparsed(data.into());
+                } else {
+                    for doc in Deserializer::from_str(data.as_str()) {
+                        match Value::deserialize(doc) {
+                            Ok(input) => {
+                                // swap current file directory
+                                let mut new_dir = file.clone();
+                                new_dir.pop();
+                                Parser::add_value(p.clone(), &input, Some(new_dir))
+                            }
+                            Err(e) => {
+                                panic!("Error while parsing YAML: {e} in {f}", f = file.display())
+                            }
                         }
                     }
                 }
@@ -678,12 +683,13 @@ mod tests {
 - sep
 - !INCLUDE valid_file.page
 - !INCLUDE inc/another_valid_file.page
+- !INCLUDE_RAW valid_file.page
 "#,
         );
 
         assert_eq!(
             format!("{}", p),
-            "<p>content</p>sep<p>content</p><p>content</p><p>content</p>"
+            "<p>content</p>sep<p>content</p><p>content</p><p>content</p>p: content"
         );
 
         fs::remove_dir_all("/tmp/ssgen_test_source_dir_include").unwrap();

@@ -178,7 +178,7 @@ impl Parser {
         match tag.as_str() {
             "!DEF" => directives::def(target, tv),
             "!FOREACH" => directives::foreach(target, tv, dir),
-            "!INCLUDE" => directives::include(target, tv, dir),
+            "!INCLUDE" | "!INCLUDE_RAW" => directives::include(target, tv, dir),
             "!IF" => directives::if_else(target, tv, dir),
             "!COPY" => directives::copy(target, tv, dir),
             // no matching directive

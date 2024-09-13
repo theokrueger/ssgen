@@ -34,7 +34,7 @@ html:
     h1: {SITE_TITLE}
     h2: By {AUTHOR}
     p: |
-      Multiline Paragraph example, great for paragraphs. Not so great for custom styling.
+      Multi-line Paragraph example, great for paragraphs. Not so great for custom styling.
 
       Go to <a href="https://{SITE_BASEURL}">this link</a> to view this webpage again.
 

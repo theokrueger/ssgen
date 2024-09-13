@@ -35,6 +35,10 @@ html:
               _href: '#variables-and-def'
               c: '!DEF'
               l: '3. Variables and !DEF'
+          - a:
+              _href: '#include'
+              c: '!INCLUDE'
+              l: '3. !INCLUDE other files'
       # Content
       - content:
           - div:
@@ -46,6 +50,9 @@ html:
           - div:
               - _id: variables-and-def
               - !INCLUDE '/content/variables-and-def.block'
+          - div:
+              - _id: include
+              - !INCLUDE '/content/include.block'
         # Footer
       - footer:
           c:
