@@ -3,6 +3,7 @@
 //! Includes helper functions to break apart TaggedValue parsing
 
 /* IMPORTS */
+use glob::{glob_with, MatchOptions};
 use serde::Deserialize;
 use serde_yaml::{value::TaggedValue, Deserializer, Value};
 use std::{cell::RefCell, fs, path::PathBuf, sync::Arc};
@@ -169,7 +170,7 @@ fn resolve_input_path(
 /// !COPY "relative/file_to_copy"   # destination is relative to current file
 /// !COPY "/absolute/file_to_copy"  # destination is absolute using source dir as root
 /// ```
-pub fn copy(target: Arc<RefCell<PageNode>>, tv: &TaggedValue, dir: Option<PathBuf>) {
+pub fn copy_file(target: Arc<RefCell<PageNode>>, tv: &TaggedValue, dir: Option<PathBuf>) {
     'valid_copy: {
         let s = parse_value!(target, &tv.value, dir.clone());
 
@@ -221,6 +222,68 @@ pub fn copy(target: Arc<RefCell<PageNode>>, tv: &TaggedValue, dir: Option<PathBu
     error!(
         target.borrow().o,
         r#"Invalid arguments to !COPY directive: "{}""#,
+        value_tostring(&tv.value)
+    )
+}
+
+/// Blindly copy a directory from somewhere in the source directory to somewhere in the destination directory
+///
+/// No checking of dir contents is done (blind copy)
+/// - File name is always preserved
+/// - Relative files are relative to the currently parsed file
+/// - Absolute files use the specified source directory as the root folder
+/// - Files outside of the source directory and its subdirectories should not be accessed
+/// Usage:
+/// ```YAML
+/// !COPY_DIR "relative/dir_to_copy"   # destination is relative to current file
+/// !COPY_DIR "/absolute/dir_to_copy"  # destination is absolute using source dir as root
+/// ```
+pub fn copy_dir(target: Arc<RefCell<PageNode>>, tv: &TaggedValue, dir: Option<PathBuf>) {
+    'valid_copy: {
+        let s = parse_value!(target, &tv.value, dir.clone());
+
+        // canonicalise input
+        let source = match resolve_input_path(target.clone(), &s, dir.clone()) {
+            Ok(s) => s,
+            Err(e) => {
+                error!(target.borrow().o, "{e}");
+                break 'valid_copy;
+            }
+        };
+
+        let match_children = source.into_os_string().into_string().unwrap() + "/*";
+        for entry in glob_with(
+            match_children.as_str(),
+            MatchOptions {
+                case_sensitive: false,
+                require_literal_separator: false,
+                require_literal_leading_dot: false,
+            },
+        )
+        .unwrap()
+        {
+            match entry {
+                Ok(path) => {
+                    debug!(target.clone().borrow().o, "Found file {}", path.display());
+                    let mut copy_tv: TaggedValue = tv.clone();
+                    copy_tv.value = format!(
+                        "{}",
+                        path.strip_prefix(target.borrow().o.input.clone())
+                            .unwrap()
+                            .display()
+                    )
+                    .into();
+                    copy_file(target.clone(), &copy_tv, dir.clone());
+                }
+                Err(e) => error!(target.borrow().o, "Error finding file {}", e),
+            }
+        }
+
+        return;
+    }
+    error!(
+        target.borrow().o,
+        r#"Invalid arguments to !COPY_DIR directive: "{}""#,
         value_tostring(&tv.value)
     )
 }
@@ -551,10 +614,11 @@ mod tests {
         assert_eq!(format!("{}", p), "zq<p>text</p>");
     }
 
-    /// Ensure Parser can handle !COPY and follow its directives
+    /// Ensure Parser can handle !COPY or !COPY_DIR and follow its directives
     #[test]
     fn test_copy() {
         fs::create_dir_all("/tmp/ssgen_test_source_dir_copy/somedir").unwrap();
+        fs::create_dir_all("/tmp/ssgen_test_source_dir_copy/somedir2").unwrap();
         fs::create_dir_all("/tmp/ssgen_test_dest_dir_copy").unwrap();
         let o = Arc::new(
             Args::parse_from([
@@ -563,7 +627,7 @@ mod tests {
                 "/tmp/ssgen_test_source_dir_copy",
                 "-o",
                 "/tmp/ssgen_test_dest_dir_copy",
-                "-s",
+                "-d",
             ])
             .build_options(),
         );
@@ -605,10 +669,15 @@ mod tests {
         out.write_all(b"text").unwrap();
         let mut out2 = File::create("/tmp/ssgen_test_source_dir_copy/somedir/valid2.file").unwrap();
         out2.write_all(b"moretext").unwrap();
+        let mut out3 = File::create("/tmp/ssgen_test_source_dir_copy/somedir2/a.file").unwrap();
+        out3.write_all(b"moretext").unwrap();
+        let mut out4 = File::create("/tmp/ssgen_test_source_dir_copy/somedir2/b.file").unwrap();
+        out4.write_all(b"moretext").unwrap();
         p.parse_yaml(
             r#"
 - !COPY "/valid.file"
 - !COPY "somedir/valid2.file"
+- !COPY_DIR "somedir2"
 "#,
         );
 
@@ -620,6 +689,18 @@ mod tests {
         );
         assert_eq!(
             PathBuf::from("/tmp/ssgen_test_dest_dir_copy/somedir/valid2.file")
+                .try_exists()
+                .unwrap(),
+            true
+        );
+        assert_eq!(
+            PathBuf::from("/tmp/ssgen_test_dest_dir_copy/somedir2/b.file")
+                .try_exists()
+                .unwrap(),
+            true
+        );
+        assert_eq!(
+            PathBuf::from("/tmp/ssgen_test_dest_dir_copy/somedir2/b.file")
                 .try_exists()
                 .unwrap(),
             true
