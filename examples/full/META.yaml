@@ -23,7 +23,5 @@
 - !DEF [SOURCE, 'https://gitlab.com/theokrueger/ssgen']
 
 # Copy some files to root of output directory
-- !COPY '{STYLESHEET}'
-- !COPY '{JSFILE}'
-- !COPY '{FAVICON}'
+- !COPY_DIR '/assets'
 - !COPY '/robots.txt'

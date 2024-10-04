@@ -9,7 +9,7 @@
     It is evaluated like any other <code>.page</code> file, but exists as the parent to any non-included <code>.page</code> file.
 - p: >
     It is also guaranteed to only be evaluated once, and as such is most suited for the <code>!COPY</code> directive.
-    The <code>!COPY</code> directive is useful to copy assets from the source directory to the output directory.
+    The <code>!COPY</code> <code>!COPY_DIR</code> directives are useful to copy assets from the source directory to the output directory.
 
 ---
 # Example
@@ -22,8 +22,9 @@ span:
       - !DEF [GLOBAL, some_value]
       - !DEF [ANOTHER_GLOBAL, some_other_value]
       \# Copy some files to the same location in the output directory
-      \# Syntax: !COPY "file_to_copy"
+      \# Syntax: !COPY[_DIR] "file_to_copy"
       - !COPY "somefile.txt"
+      - !COPY_DIR "somedir/"
   - !INCLUDE /blocks/named-code.block
 
 # Clarification
