@@ -1,0 +1,45 @@
+# The basics of using SSGen
+# (c) theokrueger 2024
+# GPL-3.0 Licensed
+
+# Intro
+- h1: Advanced
+
+- p: SSGen has advanced features that must be explicitly enabled
+- p: >
+    The <code>!SHELL_CMD</code> directive executes a shell command,
+    and is enabled with the <code>--enable-shell</code> flag.
+    The output is taken from stdout and is pasted unparsed into the document.
+---
+# Example
+- span:
+    _class: two-column-grid-with-spacer
+    yaml:
+      - !DEF [NAMED_CODE_NAME, "<i>input_directory</i>/index.page"]
+      - !DEF
+          - NAMED_CODE_CONTENT
+          - |
+            \# This is a comment
+            html:
+              body:
+                h1: Title
+                p:
+                  !SHELL_CMD [echo, Hello, Echo]
+      - !INCLUDE /blocks/named-code.block
+    br: ''
+    html:
+      - !DEF [NAMED_CODE_NAME, "<i>output_directory</i>/index.html"]
+      - !DEF
+          - NAMED_CODE_CONTENT
+          - |
+            &lt;html&gt;
+             &lt;body&gt;
+              &lt;h1&gt;Title&lt;/h1&gt;
+              &lt;p&gt;Hello Echo&lt;/p&gt;
+             &lt;/body&gt;
+            &lt;/html&gt;
+      - !INCLUDE /blocks/named-code.block
+
+# Clarification
+- p: Enable and use these features at your own risk!
+- p: Well technically the whole program is run at your own risk...

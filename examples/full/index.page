@@ -51,6 +51,10 @@ html:
               _href: '#special-files'
               c: 'META.yaml'
               l: '7. The special META.yaml'
+          - a:
+              _href: '#advanced'
+              c: 'Advanced Features'
+              l: '8. Advanced Features'
       # Content
       - content:
           - div:
@@ -74,6 +78,9 @@ html:
           - div:
               - _id: special-files
               - !INCLUDE '/content/special-files.block'
+          - div:
+              - _id: advanced
+              - !INCLUDE '/content/advanced.block'
         # Footer
       - footer:
           c:
