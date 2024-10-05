@@ -6,7 +6,7 @@
 use glob::{glob_with, MatchOptions};
 use serde::Deserialize;
 use serde_yaml::{value::TaggedValue, Deserializer, Value};
-use std::{cell::RefCell, fs, path::PathBuf, sync::Arc};
+use std::{cell::RefCell, ffi::OsStr, fs, path::PathBuf, process::Command, sync::Arc};
 
 /* LOCAL IMPORTS */
 use crate::{debug, error, info, warn, Options, PageNode, Parser};
@@ -309,7 +309,7 @@ pub fn include(target: Arc<RefCell<PageNode>>, tv: &TaggedValue, dir: Option<Pat
         p.borrow_mut().set_parent(target.clone());
 
         let file = match resolve_input_path(target.clone(), &s, dir.clone()) {
-            Ok(p) => p,
+            Ok(path) => path,
             Err(e) => {
                 error!(target.borrow().o, "{e}",);
                 break 'valid_include;
@@ -381,13 +381,64 @@ pub fn def(target: Arc<RefCell<PageNode>>, tv: &TaggedValue) {
     }
 }
 
+/// Execute an arbitrary string in the shell (dangerous)
+///
+/// Usage:
+/// ```YAML
+/// !SHELL_CMD: ['echo', 'hi']
+/// ```
+pub fn shell_command(target: Arc<RefCell<PageNode>>, tv: &TaggedValue, dir: Option<PathBuf>) {
+    // ensure this is allowed
+    if !target.borrow().o.allow_shell {
+        error!(
+            target.borrow().o,
+            r#"!SHELL_CMD used bet shell commands are not enabled! Run SSGen with the '--enable-shell' argument (danger!) to enable them."#
+        );
+        return;
+    }
+
+    // build and run command
+    if tv.value.is_sequence() {
+        let seq = tv.value.as_sequence().unwrap();
+        let mut args_str = parse_value!(target, &seq[0], dir.clone()).to_string();
+        let args_os_str = OsStr::new(args_str.as_str());
+        let mut cmd = Command::new::<&OsStr>(args_os_str);
+
+        for p in seq.iter().skip(1) {
+            let arg_str = parse_value!(target, p, dir.clone()).to_string();
+            args_str = args_str + " " + arg_str.as_str();
+            let arg_os_str = OsStr::new(arg_str.as_str());
+            cmd.arg(arg_os_str);
+        }
+
+        info!(
+            target.borrow().o,
+            r#"Running shell command: "{}""#, args_str
+        );
+
+        // run and send unparsed output
+        let output = cmd.output().expect("Failed to run process!!");
+        target
+            .borrow_mut()
+            .add_content_unparsed(std::str::from_utf8(&output.stdout[..]).unwrap().into());
+
+        return;
+    }
+
+    error!(
+        target.borrow().o,
+        r#"Invalid arguments to !SHELL_CMD directive: "{}""#,
+        value_tostring(&tv.value)
+    );
+}
+
 /// Iterate over some data provided through YAML according to a template
 ///
 /// Usage:
 /// ```YAML
 /// !FOREACH [
 ///   [x, y, ..., n],              # Variable names for use in template
-///   "{x} {y} (...) {n}",            # Template for values to be inserted into
+///   "{x} {y} (...) {n}",         # Template for values to be inserted into
 ///   [xval, yval, ..., nval],     # One set of values to insert into the template
 ///   [xval2, yval2, ..., zval2],  # Another set of values
 /// ]
@@ -627,7 +678,7 @@ mod tests {
                 "/tmp/ssgen_test_source_dir_copy",
                 "-o",
                 "/tmp/ssgen_test_dest_dir_copy",
-                "-d",
+                "-s",
             ])
             .build_options(),
         );
@@ -796,6 +847,23 @@ mod tests {
         );
 
         assert_eq!(format!("{}", p), "y<a>z</a>wy");
+    }
+
+    /// Ensure Parser can handle !SHELL_CMD and follow its directives
+    #[test]
+    fn test_shell_cmd() {
+        let o = Arc::new(
+            Args::parse_from(["", "-i", "./", "-o", "/tmp/", "-s", "--enable-shell"])
+                .build_options(),
+        );
+        let mut p = Parser::new(o.clone());
+        p.parse_yaml(
+            r#"
+- !SHELL_CMD [echo, hi1, hi2, hi3]
+"#,
+        );
+
+        assert_eq!(format!("{}", p), "hi1 hi2 hi3\n");
     }
 
     #[test]

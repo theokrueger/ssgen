@@ -69,6 +69,9 @@ pub struct Options {
 
     /// Global progress bar
     pub progress: Arc<MultiProgress>,
+
+    /// Is shell directivr enabled
+    pub allow_shell: bool,
 }
 
 /* ARGS */
@@ -99,6 +102,10 @@ pub struct Args {
     /// Silence output
     #[arg(short, long)]
     silent: bool,
+
+    /// Explicitly allow shell directives
+    #[arg(short, long)]
+    enable_shell: bool,
 }
 
 impl Args {
@@ -163,6 +170,11 @@ impl Args {
             }
         };
 
+        // give important info
+        if self.enable_shell {
+            slog::info!(log, "Shell directivr enabled! Tread carefully...");
+        }
+
         // sanity check
         if output == input {
             slog::error!(log, "Output directory is the same as Input directory!");
@@ -187,6 +199,7 @@ impl Args {
             output: output,
             logger: Box::new(log),
             progress: prog,
+            allow_shell: self.enable_shell,
         };
     }
 }
