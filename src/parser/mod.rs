@@ -180,8 +180,7 @@ impl Parser {
             "!FOREACH" => directives::foreach(target, tv, dir),
             "!INCLUDE" | "!INCLUDE_RAW" => directives::include(target, tv, dir),
             "!IF" => directives::if_else(target, tv, dir),
-            "!COPY" => directives::copy_file(target, tv, dir),
-            "!COPY_DIR" => directives::copy_dir(target, tv, dir),
+            "!COPY" | "!COPY_DIR" => directives::copy(target, tv, dir),
             "!SHELL_CMD" => directives::shell_command(target, tv, dir),
             // no matching directive
             _ => warn!(target.borrow().o, "No matching directive for {tag}"),

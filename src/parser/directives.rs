@@ -158,7 +158,7 @@ fn resolve_input_path(
     return Ok(file);
 }
 
-/// Blindly copy a file from somewhere in the source directory to somewhere in the destination directory
+/// Blindly copy a file or directory from somewhere in the source directory to somewhere in the destination directory
 ///
 /// File name/extension does not matter, and no checking of file contents is done (blind copy)
 /// - File name is always preserved
@@ -169,11 +169,13 @@ fn resolve_input_path(
 /// ```YAML
 /// !COPY "relative/file_to_copy"   # destination is relative to current file
 /// !COPY "/absolute/file_to_copy"  # destination is absolute using source dir as root
+/// !COPY_DIR "relative/dir_to_copy"
+/// !COPY_DIR "/absolute/dir_to_copy"
 /// ```
-pub fn copy_file(target: Arc<RefCell<PageNode>>, tv: &TaggedValue, dir: Option<PathBuf>) {
+pub fn copy(target: Arc<RefCell<PageNode>>, tv: &TaggedValue, dir: Option<PathBuf>) {
     'valid_copy: {
         let s = parse_value!(target, &tv.value, dir.clone());
-
+        let is_copy_dir: bool = tv.tag == "!COPY_DIR";
         // canonicalise paths
         let source = match resolve_input_path(target.clone(), &s, dir.clone()) {
             Ok(s) => s,
@@ -183,6 +185,42 @@ pub fn copy_file(target: Arc<RefCell<PageNode>>, tv: &TaggedValue, dir: Option<P
             }
         };
 
+        // do the recursion if this should be a dir
+        if is_copy_dir {
+            let match_children = source.into_os_string().into_string().unwrap() + "/**/*";
+            for entry in glob_with(
+                match_children.as_str(),
+                MatchOptions {
+                    case_sensitive: false,
+                    require_literal_separator: false,
+                    require_literal_leading_dot: false,
+                },
+            )
+            .unwrap()
+            {
+                match entry {
+                    Ok(path) => {
+                        if path.is_file() {
+                            debug!(target.clone().borrow().o, "Found file {}", path.display());
+                            let mut copy_tv: TaggedValue = tv.clone();
+                            copy_tv.tag = serde_yaml::value::Tag::new("!COPY");
+                            copy_tv.value = format!(
+                                "{}",
+                                path.strip_prefix(target.borrow().o.input.clone())
+                                    .unwrap()
+                                    .display()
+                            )
+                            .into();
+                            copy(target.clone(), &copy_tv, dir.clone());
+                        }
+                    }
+                    Err(e) => error!(target.borrow().o, "Error finding file {}", e),
+                }
+            }
+            return;
+        }
+
+        // copy the file
         let mut dest = target.borrow().o.output.clone();
         dest.push(
             match source.clone().strip_prefix(target.borrow().o.input.clone()) {
@@ -191,7 +229,6 @@ pub fn copy_file(target: Arc<RefCell<PageNode>>, tv: &TaggedValue, dir: Option<P
             },
         );
 
-        // copy the file
         info!(
             target.borrow().o,
             r#"Copying file "{s}" to "{d}"..."#,
@@ -221,69 +258,8 @@ pub fn copy_file(target: Arc<RefCell<PageNode>>, tv: &TaggedValue, dir: Option<P
     }
     error!(
         target.borrow().o,
-        r#"Invalid arguments to !COPY directive: "{}""#,
-        value_tostring(&tv.value)
-    )
-}
-
-/// Blindly copy a directory from somewhere in the source directory to somewhere in the destination directory
-///
-/// No checking of dir contents is done (blind copy)
-/// - File name is always preserved
-/// - Relative files are relative to the currently parsed file
-/// - Absolute files use the specified source directory as the root folder
-/// - Files outside of the source directory and its subdirectories should not be accessed
-/// Usage:
-/// ```YAML
-/// !COPY_DIR "relative/dir_to_copy"   # destination is relative to current file
-/// !COPY_DIR "/absolute/dir_to_copy"  # destination is absolute using source dir as root
-/// ```
-pub fn copy_dir(target: Arc<RefCell<PageNode>>, tv: &TaggedValue, dir: Option<PathBuf>) {
-    'valid_copy: {
-        let s = parse_value!(target, &tv.value, dir.clone());
-
-        // canonicalise input
-        let source = match resolve_input_path(target.clone(), &s, dir.clone()) {
-            Ok(s) => s,
-            Err(e) => {
-                error!(target.borrow().o, "{e}");
-                break 'valid_copy;
-            }
-        };
-
-        let match_children = source.into_os_string().into_string().unwrap() + "/*";
-        for entry in glob_with(
-            match_children.as_str(),
-            MatchOptions {
-                case_sensitive: false,
-                require_literal_separator: false,
-                require_literal_leading_dot: false,
-            },
-        )
-        .unwrap()
-        {
-            match entry {
-                Ok(path) => {
-                    debug!(target.clone().borrow().o, "Found file {}", path.display());
-                    let mut copy_tv: TaggedValue = tv.clone();
-                    copy_tv.value = format!(
-                        "{}",
-                        path.strip_prefix(target.borrow().o.input.clone())
-                            .unwrap()
-                            .display()
-                    )
-                    .into();
-                    copy_file(target.clone(), &copy_tv, dir.clone());
-                }
-                Err(e) => error!(target.borrow().o, "Error finding file {}", e),
-            }
-        }
-
-        return;
-    }
-    error!(
-        target.borrow().o,
-        r#"Invalid arguments to !COPY_DIR directive: "{}""#,
+        r#"Invalid arguments to {} directive: "{}""#,
+        tv.tag,
         value_tostring(&tv.value)
     )
 }
