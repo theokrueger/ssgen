@@ -52,9 +52,13 @@ html:
               c: 'META.yaml'
               l: '7. The special META.yaml'
           - a:
+              _href: '#strings'
+              c: 'Strings'
+              l: '8. String Manipulation'
+          - a:
               _href: '#advanced'
               c: 'Advanced Features'
-              l: '8. Advanced Features'
+              l: '9. Advanced Features'
       # Content
       - content:
           - div:
@@ -78,6 +82,9 @@ html:
           - div:
               - _id: special-files
               - !INCLUDE '/content/special-files.block'
+          - div:
+              - _id: strings
+              - !INCLUDE '/content/strings.block'
           - div:
               - _id: advanced
               - !INCLUDE '/content/advanced.block'

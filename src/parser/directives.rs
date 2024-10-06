@@ -6,7 +6,15 @@
 use glob::{glob_with, MatchOptions};
 use serde::Deserialize;
 use serde_yaml::{value::TaggedValue, Deserializer, Value};
-use std::{cell::RefCell, ffi::OsStr, fs, path::PathBuf, process::Command, sync::Arc};
+use std::{
+    cell::RefCell,
+    cmp::{max, min},
+    ffi::OsStr,
+    fs,
+    path::PathBuf,
+    process::Command,
+    sync::Arc,
+};
 
 /* LOCAL IMPORTS */
 use crate::{debug, error, info, warn, Options, PageNode, Parser};
@@ -426,19 +434,17 @@ pub fn substring(target: Arc<RefCell<PageNode>>, tv: &TaggedValue, dir: Option<P
             if args.len() < 3 || !args[0].is_i64() || !args[0].is_i64() {
                 break 'invalid_substring;
             };
-            let start = args[0].as_i64().unwrap();
-            let end = args[1].as_i64().unwrap();
-            if start > end || start < 0 || end < 0 {
-                break 'invalid_substring;
-            }
 
             // parse third arg then take substring
             let vstr = parse_value!(target, &args[2], dir.clone());
-            Parser::add_value(
-                target,
-                &Value::String(vstr[start.try_into().unwrap()..end.try_into().unwrap()].into()),
-                dir.clone(),
-            );
+            let start: usize = max(0, args[0].as_i64().unwrap()).try_into().unwrap();
+            let end: usize = min(vstr.len() as i64, args[1].as_i64().unwrap())
+                .try_into()
+                .unwrap();
+            if start > end {
+                break 'invalid_substring;
+            }
+            Parser::add_value(target, &Value::String(vstr[start..end].into()), dir.clone());
 
             return;
         }
@@ -637,6 +643,17 @@ mod tests {
 "#,
         );
         assert_eq!(format!("{}", p), "<div>a");
+
+        let mut p = Parser::new(o.clone());
+        p.parse_yaml(
+            r#"
+!SUBSTRING [
+  0, 626,
+  "<div>asht</div>",
+]
+"#,
+        );
+        assert_eq!(format!("{}", p), "<div>asht</div>");
     }
 
     /// Ensure Parser can handle !FOREACH and follow its directives

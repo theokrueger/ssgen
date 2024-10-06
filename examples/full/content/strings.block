@@ -3,14 +3,14 @@
 # GPL-3.0 Licensed
 
 # Intro
-- h1: Advanced
+- h1: String Manipulation
 
-- p: SSGen has advanced features that must be explicitly enabled
+- p: SSGen has helpful directives for manipulating strings
 - p: >
-    The <code>!SHELL_CMD</code> directive executes a shell command,
-    and is enabled with the <code>--enable-shell</code> flag.
-    The output is taken from stdout and is pasted unparsed into the document.
----
+    The <code>!SUBSTRING</code> directive takes a substring (duh).
+    The first two arguments are the bounds, and the third argument
+    is the YAML that gets parsed before being cut.
+
 # Example
 - span:
     _class: two-column-grid-with-spacer
@@ -19,11 +19,12 @@
       - !DEF
           - NAMED_CODE_CONTENT
           - |
+            \# This is a comment
             html:
               body:
                 h1: Title
                 p:
-                  !SHELL_CMD [echo, Hello, Echo]
+                  !SUBSTRING [0, 4, Paragraph Contents]
       - !INCLUDE /blocks/named-code.block
     br: ''
     html:
@@ -34,11 +35,10 @@
             &lt;html&gt;
              &lt;body&gt;
               &lt;h1&gt;Title&lt;/h1&gt;
-              &lt;p&gt;Hello Echo&lt;/p&gt;
+              &lt;p&gt;Para&lt;/p&gt;
              &lt;/body&gt;
             &lt;/html&gt;
       - !INCLUDE /blocks/named-code.block
 
 # Clarification
-- p: Enable and use these features at your own risk!
-- p: Well technically the whole program is run at your own risk...
+- p: Pretty fundamental stuff!
