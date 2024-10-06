@@ -182,6 +182,7 @@ impl Parser {
             "!IF" => directives::if_else(target, tv, dir),
             "!COPY" | "!COPY_DIR" => directives::copy(target, tv, dir),
             "!SHELL_CMD" => directives::shell_command(target, tv, dir),
+            "!SUBSTRING" => directives::substring(target, tv, dir),
             // no matching directive
             _ => warn!(target.borrow().o, "No matching directive for {tag}"),
         }

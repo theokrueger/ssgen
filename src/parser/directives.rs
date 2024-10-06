@@ -408,6 +408,55 @@ pub fn shell_command(target: Arc<RefCell<PageNode>>, tv: &TaggedValue, dir: Opti
     );
 }
 
+/// Take a substring of parsed YAML content
+///
+/// Usage:
+/// ```YAML
+/// !SUBSTRING [
+///   0,            # Starting index
+///   5,            # Ending index
+///   '0123456789', # The YAML to parse then index
+/// ]
+/// ```
+pub fn substring(target: Arc<RefCell<PageNode>>, tv: &TaggedValue, dir: Option<PathBuf>) {
+    debug!(target.borrow().o, "Running substring...");
+    match &tv.value {
+        Value::Sequence(args) => 'invalid_substring: {
+            // ensure preconditions
+            if args.len() < 3 || !args[0].is_i64() || !args[0].is_i64() {
+                break 'invalid_substring;
+            };
+            let start = args[0].as_i64().unwrap();
+            let end = args[1].as_i64().unwrap();
+            if start > end || start < 0 || end < 0 {
+                break 'invalid_substring;
+            }
+
+            // parse third arg then take substring
+            let vstr = parse_value!(target, &args[2], dir.clone());
+            Parser::add_value(
+                target,
+                &Value::String(vstr[start.try_into().unwrap()..end.try_into().unwrap()].into()),
+                dir.clone(),
+            );
+
+            return;
+        }
+        _ => (),
+    }
+    let s = value_tostring(&tv.value);
+    // if fail
+    error!(
+        target.borrow().o,
+        r#"Invalid arguments to !SUBSTRING directive: "{}""#,
+        if s.len() > 100 {
+            format!("{}...", &s[..99])
+        } else {
+            s
+        }
+    );
+}
+
 /// Iterate over some data provided through YAML according to a template
 ///
 /// Usage:
@@ -456,7 +505,7 @@ pub fn foreach(target: Arc<RefCell<PageNode>>, tv: &TaggedValue, dir: Option<Pat
                         // apply template string
                         Parser::add_value(child, &foreach[1], dir.clone());
                     }
-                    _ => (),
+                    _ => break 'invalid_foreach,
                 }
             }
             return;
@@ -572,6 +621,22 @@ mod tests {
         );
 
         assert_eq!(format!("{}", p), "<p>ab</p><p>ab</p><ab>asdf</ab>");
+    }
+
+    /// Ensure Parser can handle !FOREACH and follow its directives
+    #[test]
+    fn test_substring() {
+        let o = Arc::new(Args::parse_from(["", "-i", "./", "-o", "/tmp/", "-s"]).build_options());
+        let mut p = Parser::new(o.clone());
+        p.parse_yaml(
+            r#"
+!SUBSTRING [
+  0, 6,
+  "<div>asht</div>",
+]
+"#,
+        );
+        assert_eq!(format!("{}", p), "<div>a");
     }
 
     /// Ensure Parser can handle !FOREACH and follow its directives
