@@ -8,6 +8,7 @@ repository = "https://gitlab.com/theokrueger/ssgen"
 readme = "README.md"
 version = "0.2.1"
 edition = "2021"
+license = "GPL-3.0-or-later"
 license-file = "LICENSE"
 
 
