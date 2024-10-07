@@ -1,8 +1,8 @@
 [package]
 name = "ssgen"
 description = "A [S]tatic [S]ite [Gen]erator written in Rust"
-keywords = ["ssgen", "generator", "rust", "rs", "yaml"]
-categories = ["parser-implementations", "multimedia"]
+keywords = ["ssgen", "generator", "rweb", "html", "yaml"]
+categories = ["web-programming", "template-engine"]
 homepage = "https://ssgen.theokrueger.dev"
 repository = "https://gitlab.com/theokrueger/ssgen"
 readme = "README.md"
