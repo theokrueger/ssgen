@@ -129,15 +129,27 @@ fn resolve_input_path(
     }
 
     let mut path = PathBuf::new();
+    debug!(target.borrow().o, "Resolving {}...", path_str);
     if &path_str[..1] == "/" {
+        debug!(target.borrow().o, "...Absolute path!");
         // absolute path (root is input directory)
         path.push(target.borrow().o.input.clone());
         path.push(&path_str[1..]);
     } else {
         // relative path
         path.push(match dir {
-            Some(d) => d.to_path_buf(),
-            None => target.borrow().o.input.clone(),
+            Some(d) => {
+                debug!(
+                    target.borrow().o,
+                    "...Relative path! PWD is {}",
+                    d.display()
+                );
+                d.to_path_buf()
+            }
+            None => {
+                debug!(target.borrow().o, "...Relative path but no PWD!");
+                target.borrow().o.input.clone()
+            }
         });
         path.push(&path_str[..]);
     }
@@ -317,7 +329,7 @@ pub fn include(target: Arc<RefCell<PageNode>>, tv: &TaggedValue, dir: Option<Pat
                                     r#"Changing directory to "{f}""#,
                                     f = new_dir.display()
                                 );
-                                Parser::add_value(p.clone(), &input, Some(new_dir))
+                                Parser::add_value(p.clone(), &input, Some(new_dir));
                             }
                             Err(e) => {
                                 panic!("Error while parsing YAML: {e} in {f}", f = file.display())
@@ -353,12 +365,12 @@ pub fn include(target: Arc<RefCell<PageNode>>, tv: &TaggedValue, dir: Option<Pat
 /// ```YAML
 /// !DEF: [key, val]
 /// ```
-pub fn def(target: Arc<RefCell<PageNode>>, tv: &TaggedValue) {
+pub fn def(target: Arc<RefCell<PageNode>>, tv: &TaggedValue, dir: Option<PathBuf>) {
     if tv.value.is_sequence() {
         let s = tv.value.as_sequence().unwrap();
         if s.len() == 2 {
-            let kstr = parse_value!(target, &s[0], None);
-            let vstr = parse_value!(target, &s[1], None);
+            let kstr = parse_value!(target, &s[0], dir.clone());
+            let vstr = parse_value!(target, &s[1], dir);
             target.borrow_mut().register_var(kstr, vstr);
         }
     } else {

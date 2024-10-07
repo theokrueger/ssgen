@@ -176,7 +176,7 @@ impl Parser {
     fn parse_tagged(target: Arc<RefCell<PageNode>>, tv: &TaggedValue, dir: Option<PathBuf>) {
         let tag: String = tv.tag.to_string();
         match tag.as_str() {
-            "!DEF" => directives::def(target, tv),
+            "!DEF" => directives::def(target, tv, dir),
             "!FOREACH" => directives::foreach(target, tv, dir),
             "!INCLUDE" | "!INCLUDE_RAW" => directives::include(target, tv, dir),
             "!IF" => directives::if_else(target, tv, dir),
