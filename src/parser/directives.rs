@@ -312,6 +312,11 @@ pub fn include(target: Arc<RefCell<PageNode>>, tv: &TaggedValue, dir: Option<Pat
                                 // swap current file directory
                                 let mut new_dir = file.clone();
                                 new_dir.pop();
+                                debug!(
+                                    target.borrow().o,
+                                    r#"Changing directory to "{f}""#,
+                                    f = new_dir.display()
+                                );
                                 Parser::add_value(p.clone(), &input, Some(new_dir))
                             }
                             Err(e) => {

@@ -155,4 +155,8 @@ fn main() {
         t = start_time.elapsed().as_secs_f32()
     );
     drop(o); // ensures logger gets flushed
+
+    // for some reason we need to wait extra time on bebug builds for flush
+    #[cfg(debug_assertions)]
+    thread::sleep(std::time::Duration::from_millis(200));
 }

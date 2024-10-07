@@ -15,6 +15,7 @@
 use clap::Parser;
 use indicatif::MultiProgress;
 use slog::{o, Drain, Level, Logger};
+use slog_async::{Async, OverflowStrategy};
 use std::{
     fs,
     path::{Path, PathBuf},
@@ -135,7 +136,11 @@ impl Args {
                 Level::Warning
             },
         );
-        let drain = slog_async::Async::new(drain).build().fuse();
+        let drain = Async::new(drain)
+            .overflow_strategy(OverflowStrategy::Block)
+            .chan_size(1024)
+            .build()
+            .fuse();
         let log = slog::Logger::root(drain, o!());
 
         slog::debug!(log, "Logger built!");
