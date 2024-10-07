@@ -24,6 +24,11 @@ use parser::Parser;
 
 /* MAIN */
 fn main() {
+    // this exists so slog async can really flush correctly
+    main_runner();
+}
+
+fn main_runner() {
     /* SETUP */
     let start_time = Instant::now();
     let o: Arc<Options> = Arc::new(Args::parse().build_options());
@@ -156,7 +161,6 @@ fn main() {
     );
     drop(o); // ensures logger gets flushed
 
-    // for some reason we need to wait extra time on bebug builds for flush
-    #[cfg(debug_assertions)]
-    thread::sleep(std::time::Duration::from_millis(200));
+    // for some reason we need to wait extra time for logger to flush
+    thread::sleep(std::time::Duration::from_millis(100));
 }
